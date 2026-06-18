@@ -989,10 +989,10 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
           <th class="lb-th-rank">#</th>
           <th class="lb-th-player">Player</th>
           <th class="lb-th-compare">⚡</th>
-          <th class="lb-th-num">Matches Finished</th>
-          <th class="lb-th-num">Matches Played</th>
-          <th class="lb-th-num">Exact Score</th>
-          <th class="lb-th-num">Correct Result</th>
+          <th class="lb-th-num">MF</th>
+          <th class="lb-th-num">MP</th>
+          <th class="lb-th-num">✓✓</th>
+          <th class="lb-th-num">✓</th>
           <th class="lb-th-pts">Points</th>
         </tr>
       </thead>
@@ -1643,9 +1643,14 @@ async function initApp() {
 
   // Tapping topbar avatar opens Profile modal
   document.getElementById('topbar-avatar-wrap').onclick = () => openProfileModal();
-  // Hide player-only nav items for admin
+  // Hide player-only nav items for admin (keep Table visible)
   if (session.isAdmin) {
-    document.querySelectorAll('.bnav-btn:not(.admin-btn)').forEach(b => b.style.display = 'none');
+    ['view-home','view-my-preds'].forEach(v => {
+      const btn = document.querySelector(`.bnav-btn[data-view="${v}"]`);
+      if (btn) btn.style.display = 'none';
+    });
+    const picksBtn = document.getElementById('my-picks-btn');
+    if (picksBtn) picksBtn.style.display = 'none';
   }
 
   await initHomeView();

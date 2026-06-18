@@ -753,8 +753,6 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
    ════════════════════════════════════════ */
 .lb-list {
   padding: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   width: 100%;
   display: block;
 }
@@ -772,12 +770,12 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
   table-layout: auto;
 }
 
-/* ── Column widths — 8 columns: # | Player | ⚡ | Finished | Played | Exact | Result | Pts */
-.lb-th-rank    { width: 52px; text-align: center; }
+/* ── Column widths — 8 columns: # | Player | ⚡ | MF | MP | ✓✓ | ✓ | Pts */
+.lb-th-rank    { width: 36px; text-align: center; }
 .lb-th-player  { text-align: left; }
-.lb-th-compare { width: 48px; text-align: center; }
-.lb-th-num     { width: 84px; text-align: center; white-space: nowrap; }
-.lb-th-pts     { width: 60px; text-align: center; white-space: nowrap; }
+.lb-th-compare { width: 36px; text-align: center; }
+.lb-th-num     { width: 36px; text-align: center; white-space: nowrap; }
+.lb-th-pts     { width: 44px; text-align: center; white-space: nowrap; }
 
 .lb-table th {
   background: var(--card2);
