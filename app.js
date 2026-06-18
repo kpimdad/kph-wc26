@@ -689,6 +689,7 @@ function adjustScore(team, delta) {
 async function savePrediction() {
   const m = STATE.currentPredictMatch;
   if (!m || !STATE.session) return;
+  if (STATE.session.isAdmin) { showToast('Admin cannot submit predictions', 'error'); return; }
   if (isLocked(m)) { showToast('Predictions are closed for this match', 'lock'); return; }
 
   // Guard against double-submit (numpad done key + save button both firing)
@@ -1631,7 +1632,19 @@ async function initApp() {
 
   // Tapping topbar avatar opens Profile modal
   document.getElementById('topbar-avatar-wrap').onclick = () => openProfileModal();
+  // Hide player-only nav items for admin
+  if (session.isAdmin) {
+    document.querySelectorAll('.bnav-btn:not(.admin-btn)').forEach(b => b.style.display = 'none');
+  }
+
   await initHomeView();
+
+  if (session.isAdmin) {
+    showView('view-admin');
+    await initAdminPanel();
+    return;
+  }
+
   showView('view-home');
 
   // Prompt install if not already installed (skip if skipped < 24h ago)
