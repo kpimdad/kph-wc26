@@ -352,7 +352,7 @@ async function handleAdminLogin() {
 // ── Nickname helpers ──────────────────────────────────
 function toTitleCase(str) {
   return str.trim().replace(/\s+/g, ' ')
-    .split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    .split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 function normaliseNick(str) {
   return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
