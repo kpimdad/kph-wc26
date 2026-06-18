@@ -348,6 +348,16 @@ async function handleAdminLogin() {
   } catch (e) { err.textContent = 'Error: ' + e.message; err.style.display = 'block'; }
 }
 
+
+// ── Nickname helpers ──────────────────────────────────
+function toTitleCase(str) {
+  return str.trim().replace(/\s+/g, ' ')
+    .split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+function normaliseNick(str) {
+  return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 const REGISTRATION_OPEN = true;
 
 async function handleRegister() {
@@ -365,9 +375,8 @@ async function handleRegister() {
   const btn      = document.getElementById('register-btn');
   errEl.classList.remove('show');
   if (!raw) { errEl.textContent = 'Enter a nickname.'; errEl.classList.add('show'); return; }
-  // Sentence case
-  const nickname   = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-  const normalised = nickname.toLowerCase().replace(/\s+/g, '');
+  const nickname   = toTitleCase(raw);
+  const normalised = normaliseNick(nickname);
   if (!/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN must be exactly 4 digits.'; errEl.classList.add('show'); return; }
   if (pin !== confirm) { errEl.textContent = 'PINs do not match.'; errEl.classList.add('show'); return; }
   btn.disabled = true; btn.textContent = 'Creating…';
@@ -375,7 +384,7 @@ async function handleRegister() {
     const existing = await getDocs(collection(STATE.db, 'users'));
     let duplicate = false;
     existing.forEach(d => {
-      if ((d.data().nickname || '').toLowerCase().replace(/\s+/g, '') === normalised) duplicate = true;
+      if (!d.data().isAdminAccount && normaliseNick(d.data().nickname) === normalised) duplicate = true;
     });
     if (duplicate) {
       errEl.textContent = `"${nickname}" is already taken — try another.`; errEl.classList.add('show');
@@ -1154,13 +1163,13 @@ async function renderAdminUsers() {
       const current  = btn.dataset.nickname;
       const raw      = prompt(`Rename "${current}" to:`, current);
       if (!raw || raw.trim() === current) return;
-      const nickname   = raw.trim().charAt(0).toUpperCase() + raw.trim().slice(1).toLowerCase();
-      const normalised = nickname.toLowerCase().replace(/\s+/g, '');
-      // Duplicate check (skip disabled users)
+      const nickname   = toTitleCase(raw.trim());
+      const normalised = normaliseNick(nickname);
+      // Duplicate check (skip disabled and admin users)
       const existing = await getDocs(collection(STATE.db, 'users'));
       let duplicate = false;
       existing.forEach(d => {
-        if (d.id !== uid && !d.data().disabled && (d.data().nickname || '').toLowerCase().replace(/\s+/g, '') === normalised) duplicate = true;
+        if (d.id !== uid && !d.data().disabled && !d.data().isAdminAccount && normaliseNick(d.data().nickname) === normalised) duplicate = true;
       });
       if (duplicate) { showToast(`"${nickname}" already exists`, 'error'); return; }
       await updateDoc(doc(STATE.db, 'users', uid), { nickname });
@@ -1192,15 +1201,14 @@ async function renderAdminUsers() {
 async function addAdminUser() {
   const raw = document.getElementById('new-nickname').value.trim();
   if (!raw) { showToast('Nickname required', 'error'); return; }
-  // Sentence case: capitalise first letter, lowercase the rest
-  const nickname   = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-  const normalised = nickname.toLowerCase().replace(/\s+/g, '');
+  const nickname   = toTitleCase(raw);
+  const normalised = normaliseNick(nickname);
   try {
     // Duplicate check — case-insensitive, ignores spaces, skips disabled
     const existing = await getDocs(collection(STATE.db, 'users'));
     let duplicate = false;
     existing.forEach(d => {
-      if (!d.data().disabled && (d.data().nickname || '').toLowerCase().replace(/\s+/g, '') === normalised) duplicate = true;
+      if (!d.data().disabled && !d.data().isAdminAccount && normaliseNick(d.data().nickname) === normalised) duplicate = true;
     });
     if (duplicate) { showToast(`"${nickname}" already exists`, 'error'); return; }
     await setDoc(doc(collection(STATE.db, 'users')), {
