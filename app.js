@@ -1643,11 +1643,17 @@ async function initApp() {
 
   // Tapping topbar avatar opens Profile modal
   document.getElementById('topbar-avatar-wrap').onclick = () => openProfileModal();
-  // Hide player-only nav items for admin (keep Table visible)
+  // For admin: explicitly show only Table + Admin, hide everything else
   if (session.isAdmin) {
-    ['view-home','view-my-preds'].forEach(v => {
+    const navMap = {
+      'view-home':         'none',
+      'view-my-preds':     'none',
+      'view-leaderboard':  'flex',
+      'view-admin':        'flex',
+    };
+    Object.entries(navMap).forEach(([v, d]) => {
       const btn = document.querySelector(`.bnav-btn[data-view="${v}"]`);
-      if (btn) btn.style.display = 'none';
+      if (btn) btn.style.display = d;
     });
     const picksBtn = document.getElementById('my-picks-btn');
     if (picksBtn) picksBtn.style.display = 'none';
@@ -1656,6 +1662,7 @@ async function initApp() {
   await initHomeView();
 
   if (session.isAdmin) {
+    populateLeaderboardFilter();
     showView('view-admin');
     await initAdminPanel();
     return;
