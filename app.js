@@ -1633,6 +1633,10 @@ async function initApp() {
   document.getElementById('topbar-avatar-wrap').onclick = () => openProfileModal();
   await initHomeView();
   showView('view-home');
+
+  // Prompt install if not already installed (skip if skipped < 24h ago)
+  const skipTs = parseInt(localStorage.getItem('install-skipped') || '0');
+  if (!skipTs || Date.now() - skipTs > 86400000) showInstallModal();
   populateLeaderboardFilter();
 
   // Show champion/golden boot picker if not set yet
@@ -1895,4 +1899,76 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', boot);
 } else {
   boot();
+}
+
+
+// ── Force Install Modal ────────────────────────────────
+function isRunningStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+}
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function showInstallModal() {
+  if (isRunningStandalone()) return; // already installed
+  const existing = document.getElementById('force-install-modal');
+  if (existing) { existing.style.display = 'flex'; return; }
+
+  const ios = isIOS();
+  const modal = document.createElement('div');
+  modal.id = 'force-install-modal';
+  modal.style.cssText = `
+    position:fixed;inset:0;z-index:9999;
+    background:rgba(10,22,40,0.97);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:2rem 1.5rem;text-align:center;
+  `;
+  modal.innerHTML = `
+    <div style="font-size:4rem;margin-bottom:1rem">🏆</div>
+    <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#f0b429;margin:0 0 0.5rem">Install KPH WC 2026</h2>
+    <p style="color:#8899aa;font-size:0.95rem;margin-bottom:2rem;max-width:300px;line-height:1.5">
+      Add the app to your home screen for the best experience — full screen, instant loading.
+    </p>
+    ${ios ? `
+      <div style="background:#0d1e35;border:1px solid #1e3a5f;border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;max-width:320px;text-align:left">
+        <p style="color:#fff;font-size:0.9rem;margin:0 0 0.75rem;font-weight:600">To install on iPhone / iPad:</p>
+        <p style="color:#8899aa;font-size:0.875rem;margin:0.4rem 0">1. Tap the <strong style="color:#fff">Share</strong> button <span style="font-size:1.1rem">⎋</span> at the bottom of Safari</p>
+        <p style="color:#8899aa;font-size:0.875rem;margin:0.4rem 0">2. Scroll down and tap <strong style="color:#fff">Add to Home Screen</strong></p>
+        <p style="color:#8899aa;font-size:0.875rem;margin:0.4rem 0">3. Tap <strong style="color:#fff">Add</strong></p>
+      </div>
+      <button id="force-install-skip" style="background:none;border:1px solid #1e3a5f;color:#8899aa;padding:0.75rem 2rem;border-radius:8px;cursor:pointer;font-size:0.9rem">
+        Continue in browser
+      </button>
+    ` : `
+      <button id="force-install-btn" style="background:#f0b429;color:#0a1628;border:none;padding:1rem 2.5rem;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:1rem;width:100%;max-width:280px">
+        Install App
+      </button>
+      <button id="force-install-skip" style="background:none;border:1px solid #1e3a5f;color:#8899aa;padding:0.75rem 2rem;border-radius:8px;cursor:pointer;font-size:0.9rem">
+        Continue in browser
+      </button>
+    `}
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('force-install-skip')?.addEventListener('click', () => {
+    modal.style.display = 'none';
+    localStorage.setItem('install-skipped', Date.now());
+  });
+
+  if (!ios) {
+    document.getElementById('force-install-btn')?.addEventListener('click', async () => {
+      if (_deferredInstallPrompt) {
+        _deferredInstallPrompt.prompt();
+        const { outcome } = await _deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') modal.style.display = 'none';
+        _deferredInstallPrompt = null;
+      } else {
+        // Fallback if prompt not available yet
+        modal.style.display = 'none';
+      }
+    });
+  }
 }
