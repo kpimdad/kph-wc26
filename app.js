@@ -348,7 +348,7 @@ async function handleAdminLogin() {
   } catch (e) { err.textContent = 'Error: ' + e.message; err.style.display = 'block'; }
 }
 
-const REGISTRATION_OPEN = false;
+const REGISTRATION_OPEN = true;
 
 async function handleRegister() {
   if (!REGISTRATION_OPEN) {
@@ -1685,10 +1685,14 @@ function wireEvents() {
     document.getElementById('pin-toggle').textContent = pin.type === 'password' ? '👁' : '🙈';
   });
 
-  // Register toggle (removed — registration is closed)
+  // Register toggle
   document.getElementById('show-login-btn').addEventListener('click', () => {
     document.getElementById('register-form').style.display = 'none';
     document.getElementById('login-form').style.display = 'block';
+  });
+  document.getElementById('show-register-btn').addEventListener('click', () => {
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('register-form').style.display = 'block';
   });
   document.getElementById('register-btn').addEventListener('click', handleRegister);
   document.getElementById('reg-pin-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') handleRegister(); });
