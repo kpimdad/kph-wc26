@@ -1002,6 +1002,15 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
   document.getElementById('leaderboard-updated').textContent =
     `Updated ${new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}`;
 
+  container.insertAdjacentHTML('afterend', `
+    <div class="lb-legend">
+      <span>MF</span> Matches Finished &nbsp;·&nbsp;
+      <span>MP</span> Matches Played &nbsp;·&nbsp;
+      <span>✓✓</span> Exact Score &nbsp;·&nbsp;
+      <span>✓</span> Correct Result &nbsp;·&nbsp;
+      <span>Pts</span> Points
+    </div>`);
+
   // Save rank snapshot for next visit (overall only)
   if (!filter) {
     const completedCount = STATE.matches.filter(m => m.resultA !== null).length;
