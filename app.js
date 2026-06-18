@@ -991,8 +991,8 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
           <th class="lb-th-compare">⚡</th>
           <th class="lb-th-num">MF</th>
           <th class="lb-th-num">MP</th>
-          <th class="lb-th-num">✓✓</th>
-          <th class="lb-th-num">✓</th>
+          <th class="lb-th-num">🎯</th>
+          <th class="lb-th-num">✅</th>
           <th class="lb-th-pts">Points</th>
         </tr>
       </thead>
@@ -1006,9 +1006,8 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
     <div class="lb-legend">
       <span>MF</span> Matches Finished &nbsp;·&nbsp;
       <span>MP</span> Matches Played &nbsp;·&nbsp;
-      <span>✓✓</span> Exact Score &nbsp;·&nbsp;
-      <span>✓</span> Correct Result &nbsp;·&nbsp;
-      <span>Pts</span> Points
+      🎯 Exact Score (13pts) &nbsp;·&nbsp;
+      ✅ Correct Result (10pts)
     </div>`);
 
   // Save rank snapshot for next visit (overall only)
