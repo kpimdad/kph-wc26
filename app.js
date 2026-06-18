@@ -1651,7 +1651,7 @@ async function initApp() {
 
   // Tapping topbar avatar opens Profile modal
   document.getElementById('topbar-avatar-wrap').onclick = () => openProfileModal();
-  // For admin: explicitly show only Table + Admin, hide everything else
+  // Set nav visibility based on role
   if (session.isAdmin) {
     const navMap = {
       'view-home':         'none',
@@ -1665,6 +1665,14 @@ async function initApp() {
     });
     const picksBtn = document.getElementById('my-picks-btn');
     if (picksBtn) picksBtn.style.display = 'none';
+  } else {
+    // Explicitly show all regular nav buttons for normal users
+    ['view-home', 'view-my-preds', 'view-leaderboard'].forEach(v => {
+      const btn = document.querySelector(`.bnav-btn[data-view="${v}"]`);
+      if (btn) btn.style.display = 'flex';
+    });
+    const picksBtn = document.getElementById('my-picks-btn');
+    if (picksBtn) picksBtn.style.display = '';
   }
 
   await initHomeView();
