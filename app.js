@@ -1924,6 +1924,11 @@ async function boot() {
   await initApp();
 }
 
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/kph-wc26/sw.js').catch(() => {});
+}
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', boot);
 } else {
