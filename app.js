@@ -413,6 +413,7 @@ function populateTeamSelects() {
 }
 
 async function openChampionModal(userData = null) {
+  if (STATE.session?.isAdmin) return;
   populateTeamSelects();
   if (userData?.championPick)   document.getElementById('champion-select').value    = userData.championPick;
   if (userData?.goldenBootPick) document.getElementById('golden-boot-select').value = userData.goldenBootPick;
@@ -424,6 +425,7 @@ async function openChampionModal(userData = null) {
 }
 
 async function saveChampionPick() {
+  if (STATE.session?.isAdmin) return;
   const champion   = document.getElementById('champion-select').value;
   const goldenBoot = document.getElementById('golden-boot-select').value;
   if (!champion || !goldenBoot) { showToast('Pick both a champion and a top-scorer team', 'error'); return; }
@@ -1802,6 +1804,7 @@ function wireEvents() {
     if (e.target === document.getElementById('champion-modal')) closeModal();
   });
   document.getElementById('my-picks-btn').addEventListener('click', async () => {
+    if (STATE.session?.isAdmin) return;
     const s = await getDoc(doc(STATE.db, 'users', STATE.session.userId));
     openChampionModal(s.exists() ? s.data() : null);
   });
