@@ -755,6 +755,8 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
   padding: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  width: 100%;
+  display: block;
 }
 .lb-empty {
   text-align: center;
