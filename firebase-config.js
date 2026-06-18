@@ -1,15 +1,14 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FIREBASE CONFIGURATION — KPH WC 2026
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Firebase Console → KPH project → Project Settings → Your apps → Web app
 
 const FIREBASE_CONFIG = {
-  apiKey:            "REPLACE_ME",
-  authDomain:        "REPLACE_ME",
-  projectId:         "REPLACE_ME",
-  storageBucket:     "REPLACE_ME",
-  messagingSenderId: "REPLACE_ME",
-  appId:             "REPLACE_ME"
+  apiKey:            "AIzaSyCCkhGJS9ySJvH7woS02j5UqWejkXOTcwQ",
+  authDomain:        "kph-wc26.firebaseapp.com",
+  projectId:         "kph-wc26",
+  storageBucket:     "kph-wc26.firebasestorage.app",
+  messagingSenderId: "458063775527",
+  appId:             "1:458063775527:web:5af5501394e764cffe0b02"
 };
 
 // ── football-data.org API key ──────────────────────
