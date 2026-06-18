@@ -58,17 +58,23 @@ function fetchAPI(path) {
 async function main() {
   console.log(`[${new Date().toISOString()}] Starting WC result sync…`);
 
-  // Only fetch today's matches (UTC). This keeps reads/writes minimal — no
-  // point re-checking all historical results every run.
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  console.log(`Fetching results for date: ${today}`);
+  // Fetch all finished WC matches from tournament start to tomorrow (UTC).
+  // This ensures we catch up on any missed results from previous days.
+  const dateFrom = '2026-06-11';
+  const dateTo   = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  console.log(`Fetching finished results from ${dateFrom} to ${dateTo}`);
 
   let data;
   try {
-    data = await fetchAPI(`/v4/competitions/WC/matches?status=FINISHED&dateFrom=${today}&dateTo=${today}`);
+    data = await fetchAPI(`/v4/competitions/WC/matches?status=FINISHED&dateFrom=${dateFrom}&dateTo=${dateTo}`);
   } catch (e) {
-    console.warn('Date-filtered fetch failed, retrying with season param…', e.message);
-    data = await fetchAPI(`/v4/competitions/WC/matches?status=FINISHED&season=2026&dateFrom=${today}&dateTo=${today}`);
+    console.warn('Primary fetch failed:', e.message);
+    try {
+      data = await fetchAPI(`/v4/competitions/WC/matches?status=FINISHED&season=2026`);
+    } catch (e2) {
+      console.error('Both API calls failed:', e2.message);
+      data = { matches: [] };
+    }
   }
 
   const finished = (data.matches || []).filter(m => m.status === 'FINISHED');
