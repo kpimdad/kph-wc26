@@ -78,7 +78,7 @@ async function main() {
   }
 
   const finished = (data.matches || []).filter(m => m.status === 'FINISHED');
-  console.log(`Found ${finished.length} finished match(es) from API for ${today}`);
+  console.log(`Found ${finished.length} finished match(es) from API (${dateFrom} – ${dateTo})`);
 
   let updated = 0;
 
