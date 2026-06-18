@@ -1,0 +1,626 @@
+[
+  {
+    "matchId": "m001",
+    "kickoffUTC": "2026-06-11T19:00:00Z",
+    "teamA": "Mexico",
+    "teamB": "South Africa"
+  },
+  {
+    "matchId": "m002",
+    "kickoffUTC": "2026-06-12T02:00:00Z",
+    "teamA": "South Korea",
+    "teamB": "Czechia"
+  },
+  {
+    "matchId": "m003",
+    "kickoffUTC": "2026-06-18T16:00:00Z",
+    "teamA": "Czechia",
+    "teamB": "South Africa"
+  },
+  {
+    "matchId": "m004",
+    "kickoffUTC": "2026-06-19T01:00:00Z",
+    "teamA": "Mexico",
+    "teamB": "South Korea"
+  },
+  {
+    "matchId": "m005",
+    "kickoffUTC": "2026-06-25T01:00:00Z",
+    "teamA": "Czechia",
+    "teamB": "Mexico"
+  },
+  {
+    "matchId": "m006",
+    "kickoffUTC": "2026-06-25T01:00:00Z",
+    "teamA": "South Africa",
+    "teamB": "South Korea"
+  },
+  {
+    "matchId": "m007",
+    "kickoffUTC": "2026-06-12T19:00:00Z",
+    "teamA": "Canada",
+    "teamB": "Bosnia & Herzegovina"
+  },
+  {
+    "matchId": "m008",
+    "kickoffUTC": "2026-06-13T19:00:00Z",
+    "teamA": "Qatar",
+    "teamB": "Switzerland"
+  },
+  {
+    "matchId": "m009",
+    "kickoffUTC": "2026-06-18T19:00:00Z",
+    "teamA": "Switzerland",
+    "teamB": "Bosnia & Herzegovina"
+  },
+  {
+    "matchId": "m010",
+    "kickoffUTC": "2026-06-18T22:00:00Z",
+    "teamA": "Canada",
+    "teamB": "Qatar"
+  },
+  {
+    "matchId": "m011",
+    "kickoffUTC": "2026-06-24T19:00:00Z",
+    "teamA": "Switzerland",
+    "teamB": "Canada"
+  },
+  {
+    "matchId": "m012",
+    "kickoffUTC": "2026-06-24T19:00:00Z",
+    "teamA": "Bosnia & Herzegovina",
+    "teamB": "Qatar"
+  },
+  {
+    "matchId": "m013",
+    "kickoffUTC": "2026-06-13T22:00:00Z",
+    "teamA": "Brazil",
+    "teamB": "Morocco"
+  },
+  {
+    "matchId": "m014",
+    "kickoffUTC": "2026-06-14T01:00:00Z",
+    "teamA": "Haiti",
+    "teamB": "Scotland"
+  },
+  {
+    "matchId": "m015",
+    "kickoffUTC": "2026-06-19T22:00:00Z",
+    "teamA": "Scotland",
+    "teamB": "Morocco"
+  },
+  {
+    "matchId": "m016",
+    "kickoffUTC": "2026-06-20T00:30:00Z",
+    "teamA": "Brazil",
+    "teamB": "Haiti"
+  },
+  {
+    "matchId": "m017",
+    "kickoffUTC": "2026-06-24T22:00:00Z",
+    "teamA": "Scotland",
+    "teamB": "Brazil"
+  },
+  {
+    "matchId": "m018",
+    "kickoffUTC": "2026-06-24T22:00:00Z",
+    "teamA": "Morocco",
+    "teamB": "Haiti"
+  },
+  {
+    "matchId": "m019",
+    "kickoffUTC": "2026-06-13T01:00:00Z",
+    "teamA": "USA",
+    "teamB": "Paraguay"
+  },
+  {
+    "matchId": "m020",
+    "kickoffUTC": "2026-06-14T04:00:00Z",
+    "teamA": "Australia",
+    "teamB": "Türkiye"
+  },
+  {
+    "matchId": "m021",
+    "kickoffUTC": "2026-06-19T19:00:00Z",
+    "teamA": "USA",
+    "teamB": "Australia"
+  },
+  {
+    "matchId": "m022",
+    "kickoffUTC": "2026-06-20T03:00:00Z",
+    "teamA": "Türkiye",
+    "teamB": "Paraguay"
+  },
+  {
+    "matchId": "m023",
+    "kickoffUTC": "2026-06-26T02:00:00Z",
+    "teamA": "Türkiye",
+    "teamB": "USA"
+  },
+  {
+    "matchId": "m024",
+    "kickoffUTC": "2026-06-26T02:00:00Z",
+    "teamA": "Paraguay",
+    "teamB": "Australia"
+  },
+  {
+    "matchId": "m025",
+    "kickoffUTC": "2026-06-14T17:00:00Z",
+    "teamA": "Germany",
+    "teamB": "Curaçao"
+  },
+  {
+    "matchId": "m026",
+    "kickoffUTC": "2026-06-14T23:00:00Z",
+    "teamA": "Ivory Coast",
+    "teamB": "Ecuador"
+  },
+  {
+    "matchId": "m027",
+    "kickoffUTC": "2026-06-20T20:00:00Z",
+    "teamA": "Germany",
+    "teamB": "Ivory Coast"
+  },
+  {
+    "matchId": "m028",
+    "kickoffUTC": "2026-06-21T03:00:00Z",
+    "teamA": "Ecuador",
+    "teamB": "Curaçao"
+  },
+  {
+    "matchId": "m029",
+    "kickoffUTC": "2026-06-25T20:00:00Z",
+    "teamA": "Ecuador",
+    "teamB": "Germany"
+  },
+  {
+    "matchId": "m030",
+    "kickoffUTC": "2026-06-25T20:00:00Z",
+    "teamA": "Curaçao",
+    "teamB": "Ivory Coast"
+  },
+  {
+    "matchId": "m031",
+    "kickoffUTC": "2026-06-14T20:00:00Z",
+    "teamA": "Netherlands",
+    "teamB": "Japan"
+  },
+  {
+    "matchId": "m032",
+    "kickoffUTC": "2026-06-15T02:00:00Z",
+    "teamA": "Sweden",
+    "teamB": "Tunisia"
+  },
+  {
+    "matchId": "m033",
+    "kickoffUTC": "2026-06-20T17:00:00Z",
+    "teamA": "Netherlands",
+    "teamB": "Sweden"
+  },
+  {
+    "matchId": "m034",
+    "kickoffUTC": "2026-06-21T04:00:00Z",
+    "teamA": "Tunisia",
+    "teamB": "Japan"
+  },
+  {
+    "matchId": "m035",
+    "kickoffUTC": "2026-06-25T23:00:00Z",
+    "teamA": "Japan",
+    "teamB": "Sweden"
+  },
+  {
+    "matchId": "m036",
+    "kickoffUTC": "2026-06-25T23:00:00Z",
+    "teamA": "Tunisia",
+    "teamB": "Netherlands"
+  },
+  {
+    "matchId": "m037",
+    "kickoffUTC": "2026-06-15T19:00:00Z",
+    "teamA": "Belgium",
+    "teamB": "Egypt"
+  },
+  {
+    "matchId": "m038",
+    "kickoffUTC": "2026-06-16T01:00:00Z",
+    "teamA": "Iran",
+    "teamB": "New Zealand"
+  },
+  {
+    "matchId": "m039",
+    "kickoffUTC": "2026-06-21T19:00:00Z",
+    "teamA": "Belgium",
+    "teamB": "Iran"
+  },
+  {
+    "matchId": "m040",
+    "kickoffUTC": "2026-06-22T01:00:00Z",
+    "teamA": "New Zealand",
+    "teamB": "Egypt"
+  },
+  {
+    "matchId": "m041",
+    "kickoffUTC": "2026-06-27T03:00:00Z",
+    "teamA": "Egypt",
+    "teamB": "Iran"
+  },
+  {
+    "matchId": "m042",
+    "kickoffUTC": "2026-06-27T03:00:00Z",
+    "teamA": "New Zealand",
+    "teamB": "Belgium"
+  },
+  {
+    "matchId": "m043",
+    "kickoffUTC": "2026-06-15T16:00:00Z",
+    "teamA": "Spain",
+    "teamB": "Cape Verde"
+  },
+  {
+    "matchId": "m044",
+    "kickoffUTC": "2026-06-15T22:00:00Z",
+    "teamA": "Saudi Arabia",
+    "teamB": "Uruguay"
+  },
+  {
+    "matchId": "m045",
+    "kickoffUTC": "2026-06-21T16:00:00Z",
+    "teamA": "Spain",
+    "teamB": "Saudi Arabia"
+  },
+  {
+    "matchId": "m046",
+    "kickoffUTC": "2026-06-21T22:00:00Z",
+    "teamA": "Uruguay",
+    "teamB": "Cape Verde"
+  },
+  {
+    "matchId": "m047",
+    "kickoffUTC": "2026-06-27T00:00:00Z",
+    "teamA": "Cape Verde",
+    "teamB": "Saudi Arabia"
+  },
+  {
+    "matchId": "m048",
+    "kickoffUTC": "2026-06-27T00:00:00Z",
+    "teamA": "Uruguay",
+    "teamB": "Spain"
+  },
+  {
+    "matchId": "m049",
+    "kickoffUTC": "2026-06-16T19:00:00Z",
+    "teamA": "France",
+    "teamB": "Senegal"
+  },
+  {
+    "matchId": "m050",
+    "kickoffUTC": "2026-06-16T22:00:00Z",
+    "teamA": "Iraq",
+    "teamB": "Norway"
+  },
+  {
+    "matchId": "m051",
+    "kickoffUTC": "2026-06-22T21:00:00Z",
+    "teamA": "France",
+    "teamB": "Iraq"
+  },
+  {
+    "matchId": "m052",
+    "kickoffUTC": "2026-06-23T00:00:00Z",
+    "teamA": "Norway",
+    "teamB": "Senegal"
+  },
+  {
+    "matchId": "m053",
+    "kickoffUTC": "2026-06-26T19:00:00Z",
+    "teamA": "Norway",
+    "teamB": "France"
+  },
+  {
+    "matchId": "m054",
+    "kickoffUTC": "2026-06-26T19:00:00Z",
+    "teamA": "Senegal",
+    "teamB": "Iraq"
+  },
+  {
+    "matchId": "m055",
+    "kickoffUTC": "2026-06-17T01:00:00Z",
+    "teamA": "Argentina",
+    "teamB": "Algeria"
+  },
+  {
+    "matchId": "m056",
+    "kickoffUTC": "2026-06-17T04:00:00Z",
+    "teamA": "Austria",
+    "teamB": "Jordan"
+  },
+  {
+    "matchId": "m057",
+    "kickoffUTC": "2026-06-22T17:00:00Z",
+    "teamA": "Argentina",
+    "teamB": "Austria"
+  },
+  {
+    "matchId": "m058",
+    "kickoffUTC": "2026-06-23T03:00:00Z",
+    "teamA": "Jordan",
+    "teamB": "Algeria"
+  },
+  {
+    "matchId": "m059",
+    "kickoffUTC": "2026-06-28T02:00:00Z",
+    "teamA": "Algeria",
+    "teamB": "Austria"
+  },
+  {
+    "matchId": "m060",
+    "kickoffUTC": "2026-06-28T02:00:00Z",
+    "teamA": "Jordan",
+    "teamB": "Argentina"
+  },
+  {
+    "matchId": "m061",
+    "kickoffUTC": "2026-06-17T17:00:00Z",
+    "teamA": "Portugal",
+    "teamB": "DR Congo"
+  },
+  {
+    "matchId": "m062",
+    "kickoffUTC": "2026-06-18T02:00:00Z",
+    "teamA": "Uzbekistan",
+    "teamB": "Colombia"
+  },
+  {
+    "matchId": "m063",
+    "kickoffUTC": "2026-06-23T17:00:00Z",
+    "teamA": "Portugal",
+    "teamB": "Uzbekistan"
+  },
+  {
+    "matchId": "m064",
+    "kickoffUTC": "2026-06-24T02:00:00Z",
+    "teamA": "Colombia",
+    "teamB": "DR Congo"
+  },
+  {
+    "matchId": "m065",
+    "kickoffUTC": "2026-06-27T23:30:00Z",
+    "teamA": "Colombia",
+    "teamB": "Portugal"
+  },
+  {
+    "matchId": "m066",
+    "kickoffUTC": "2026-06-27T23:30:00Z",
+    "teamA": "DR Congo",
+    "teamB": "Uzbekistan"
+  },
+  {
+    "matchId": "m067",
+    "kickoffUTC": "2026-06-17T20:00:00Z",
+    "teamA": "England",
+    "teamB": "Croatia"
+  },
+  {
+    "matchId": "m068",
+    "kickoffUTC": "2026-06-17T23:00:00Z",
+    "teamA": "Ghana",
+    "teamB": "Panama"
+  },
+  {
+    "matchId": "m069",
+    "kickoffUTC": "2026-06-23T20:00:00Z",
+    "teamA": "England",
+    "teamB": "Ghana"
+  },
+  {
+    "matchId": "m070",
+    "kickoffUTC": "2026-06-23T23:00:00Z",
+    "teamA": "Panama",
+    "teamB": "Croatia"
+  },
+  {
+    "matchId": "m071",
+    "kickoffUTC": "2026-06-27T21:00:00Z",
+    "teamA": "Panama",
+    "teamB": "England"
+  },
+  {
+    "matchId": "m072",
+    "kickoffUTC": "2026-06-27T21:00:00Z",
+    "teamA": "Croatia",
+    "teamB": "Ghana"
+  },
+  {
+    "matchId": "m073",
+    "kickoffUTC": "2026-06-28T19:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m074",
+    "kickoffUTC": "2026-06-29T19:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m075",
+    "kickoffUTC": "2026-06-29T20:30:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m076",
+    "kickoffUTC": "2026-06-30T01:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m077",
+    "kickoffUTC": "2026-06-30T17:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m078",
+    "kickoffUTC": "2026-06-30T21:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m079",
+    "kickoffUTC": "2026-07-01T01:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m080",
+    "kickoffUTC": "2026-07-01T16:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m081",
+    "kickoffUTC": "2026-07-01T20:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m082",
+    "kickoffUTC": "2026-07-01T20:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m083",
+    "kickoffUTC": "2026-07-02T19:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m084",
+    "kickoffUTC": "2026-07-02T23:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m085",
+    "kickoffUTC": "2026-07-03T03:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m086",
+    "kickoffUTC": "2026-07-03T18:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m087",
+    "kickoffUTC": "2026-07-03T22:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m088",
+    "kickoffUTC": "2026-07-04T01:30:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m089",
+    "kickoffUTC": "2026-07-04T17:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m090",
+    "kickoffUTC": "2026-07-04T21:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m091",
+    "kickoffUTC": "2026-07-05T20:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m092",
+    "kickoffUTC": "2026-07-06T00:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m093",
+    "kickoffUTC": "2026-07-06T19:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m094",
+    "kickoffUTC": "2026-07-07T00:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m095",
+    "kickoffUTC": "2026-07-07T16:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m096",
+    "kickoffUTC": "2026-07-07T20:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m097",
+    "kickoffUTC": "2026-07-09T20:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m098",
+    "kickoffUTC": "2026-07-10T19:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m099",
+    "kickoffUTC": "2026-07-11T20:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m100",
+    "kickoffUTC": "2026-07-12T01:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m101",
+    "kickoffUTC": "2026-07-14T19:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m102",
+    "kickoffUTC": "2026-07-15T19:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m103",
+    "kickoffUTC": "2026-07-18T21:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  },
+  {
+    "matchId": "m104",
+    "kickoffUTC": "2026-07-19T19:00:00Z",
+    "teamA": "TBD",
+    "teamB": "TBD"
+  }
+]
