@@ -1619,10 +1619,15 @@ async function initApp() {
   document.getElementById('admin-nav-btn').style.display = session.isAdmin ? 'flex' : 'none';
   document.getElementById('nav-user-name').textContent = session.nickname;
 
-  // Topbar avatar — fetch user doc for photoURL
+  // Topbar avatar — fetch user doc and refresh nickname in case admin renamed them
   try {
     const uSnap = await getDoc(doc(STATE.db, 'users', session.userId));
     const uData = uSnap.exists() ? uSnap.data() : {};
+    if (uData.nickname && uData.nickname !== session.nickname) {
+      session.nickname = uData.nickname;
+      saveSession(session.userId, session.nickname, session.isAdmin);
+      document.getElementById('nav-user-name').textContent = session.nickname;
+    }
     document.getElementById('topbar-avatar').innerHTML =
       getAvatarHTML({ nickname: session.nickname, photoURL: uData.photoURL || '' }, 32);
   } catch {
