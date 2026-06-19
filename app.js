@@ -1943,23 +1943,32 @@ async function shareStandings() {
       ctx.textBaseline = 'middle';
       ctx.font         = 'bold 32px "Bebas Neue", sans-serif';
       ctx.fillStyle    = i < 3 ? ['#FFD700','#C0C0C0','#CD7F32'][i] : '#3a5060';
-      ctx.fillText(`${i + 1}`, xRank, midY - 8);
+      ctx.fillText(`${i + 1}`, xRank, midY - 12);
 
-      // Rank movement arrow below rank number
+      // Rank movement pill below rank number
       const prevRankPos = shareCardPrevRanks[u.id];
       if (prevRankPos != null) {
         const diff = prevRankPos - (i + 1);
-        ctx.font      = 'bold 16px sans-serif';
-        ctx.textAlign = 'center';
-        if (diff > 0) {
-          ctx.fillStyle = '#27ae60';
-          ctx.fillText(`↑${diff}`, xRank, midY + 14);
-        } else if (diff < 0) {
-          ctx.fillStyle = '#e74c3c';
-          ctx.fillText(`↓${Math.abs(diff)}`, xRank, midY + 14);
-        } else {
-          ctx.fillStyle = '#3a5060';
-          ctx.fillText('—', xRank, midY + 14);
+        if (diff !== 0) {
+          const arrow   = diff > 0 ? `↑${diff}` : `↓${Math.abs(diff)}`;
+          const bgCol   = diff > 0 ? 'rgba(46,204,113,0.22)' : 'rgba(231,76,60,0.22)';
+          const txtCol  = diff > 0 ? '#2ecc71' : '#e74c3c';
+          const pillY   = midY + 10;
+          ctx.font      = 'bold 17px sans-serif';
+          ctx.textAlign = 'center';
+          const tw      = ctx.measureText(arrow).width;
+          const pH = 20, pW = tw + 14, pR = 4;
+          const pX = xRank - pW / 2;
+          const pYt = pillY - pH / 2;
+          // Pill background
+          ctx.fillStyle = bgCol;
+          ctx.beginPath();
+          ctx.roundRect(pX, pYt, pW, pH, pR);
+          ctx.fill();
+          // Pill text
+          ctx.fillStyle   = txtCol;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(arrow, xRank, pillY);
         }
       }
 
