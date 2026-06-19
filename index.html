@@ -277,13 +277,13 @@
      ════════════════════════════════════════ -->
 <div id="view-leaderboard" class="view">
   <div class="view-header">
-    <div>
-      <h2 class="view-title">Leaderboard</h2>
+    <h2 class="view-title">Leaderboard</h2>
+    <div class="lb-toolbar">
+      <select id="leaderboard-filter" class="filter-select">
+        <option value="overall">Overall</option>
+      </select>
+      <button id="share-standings-btn" class="lb-share-btn" title="Share Standings">📸</button>
     </div>
-    <select id="leaderboard-filter" class="filter-select">
-      <option value="overall">Overall</option>
-    </select>
-      <button id="share-standings-btn" title="Share Standings" style="background:rgba(255,255,255,0.07);border:1px solid var(--border);color:var(--silver);border-radius:8px;padding:0.45rem 0.7rem;font-size:1.1rem;cursor:pointer;line-height:1">📸</button>
   </div>
 
   <div id="leaderboard-body" class="lb-list">
