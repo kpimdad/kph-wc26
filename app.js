@@ -2077,7 +2077,7 @@ function wireEvents() {
     document.getElementById('register-form').style.display = 'none';
     document.getElementById('login-form').style.display = 'block';
   });
-  document.getElementById('show-register-btn').addEventListener('click', () => {
+  document.getElementById('show-register-btn')?.addEventListener('click', () => {
     document.getElementById('login-form').style.display = 'none';
     document.getElementById('register-form').style.display = 'block';
   });
