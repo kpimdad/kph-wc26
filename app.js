@@ -1045,8 +1045,8 @@ function populateLeaderboardFilter() {
   const sel = document.getElementById('leaderboard-filter');
   const matchDays = [...new Set(STATE.matches.map(m => m.matchDay))];
   sel.innerHTML =
-    '<option value="overall">🏅 Overall</option>' +
-    '<option value="this-match-day">📅 This Match Day</option>' +
+    '<option value="overall">Overall</option>' +
+    '<option value="this-match-day">This Match Day</option>' +
     '<optgroup label="By Week">' +
     ['Jun 11–17','Jun 18–24','Jun 25–Jul 1','Jul 2–8','Jul 9–15','Jul 16–19']
       .map((l, i) => `<option value="week-${i+1}">Week ${i+1} (${l})</option>`).join('') +
