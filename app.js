@@ -1703,6 +1703,197 @@ async function initApp() {
   } catch {}
 }
 
+
+// ── Share Standings Card (pure Canvas 2D, 2× HD) ───────
+async function shareStandings() {
+  const btn = document.getElementById('share-standings-btn');
+  btn.textContent = '⏳';
+  btn.disabled = true;
+
+  try {
+    const rankedUsers = [...STATE.users]
+      .filter(u => !u.isAdminAccount)
+      .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
+
+    const DPR    = 2;
+    const W      = 800;
+    const PAD    = 36;
+    const ROW_H  = 56;
+    const HDR_H  = 210;
+    const FOOT_H = 52;
+    const H      = HDR_H + rankedUsers.length * ROW_H + FOOT_H;
+
+    const xRank  = PAD + 20;
+    const xName  = PAD + 56;
+    const xExact = W - 270;
+    const xRes   = W - 170;
+    const xPts   = W - PAD;
+
+    const canvas  = document.createElement('canvas');
+    canvas.width  = W * DPR;
+    canvas.height = H * DPR;
+    const ctx     = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+
+    // Background image
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = '26.jpg';
+    });
+    const sc = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+    ctx.drawImage(img,
+      (W - img.naturalWidth  * sc) / 2,
+      (H - img.naturalHeight * sc) / 2,
+      img.naturalWidth  * sc,
+      img.naturalHeight * sc
+    );
+
+    // Gradient overlay
+    const overlay = ctx.createLinearGradient(0, 0, 0, H);
+    overlay.addColorStop(0,    'rgba(8,12,20,0.88)');
+    overlay.addColorStop(0.35, 'rgba(8,12,20,0.70)');
+    overlay.addColorStop(0.65, 'rgba(8,12,20,0.70)');
+    overlay.addColorStop(1,    'rgba(8,12,20,0.92)');
+    ctx.fillStyle = overlay;
+    ctx.fillRect(0, 0, W, H);
+
+    // Gold accent bars
+    const goldBar = ctx.createLinearGradient(0, 0, W, 0);
+    goldBar.addColorStop(0,    'rgba(240,180,41,0)');
+    goldBar.addColorStop(0.25, 'rgba(240,180,41,0.75)');
+    goldBar.addColorStop(0.75, 'rgba(240,180,41,0.75)');
+    goldBar.addColorStop(1,    'rgba(240,180,41,0)');
+    ctx.fillStyle = goldBar;
+    ctx.fillRect(0, 0, W, 3);
+    ctx.fillRect(0, H - 3, W, 3);
+
+    // Header
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.font      = '44px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('🏆', W / 2, 50);
+
+    ctx.font         = 'bold 60px "Bebas Neue", Arial Narrow, sans-serif';
+    ctx.fillStyle    = '#F0B429';
+    ctx.shadowColor  = 'rgba(240,180,41,0.45)';
+    ctx.shadowBlur   = 20;
+    ctx.fillText('KPH WC 2026', W / 2, 112);
+    ctx.shadowBlur   = 0;
+    ctx.shadowColor  = 'transparent';
+
+    ctx.font      = '22px sans-serif';
+    ctx.fillStyle = '#7a8fa8';
+    ctx.fillText(new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), W / 2, 154);
+
+    // Divider
+    const divGrad = ctx.createLinearGradient(0, 0, W, 0);
+    divGrad.addColorStop(0,   'rgba(240,180,41,0)');
+    divGrad.addColorStop(0.2, 'rgba(240,180,41,0.5)');
+    divGrad.addColorStop(0.8, 'rgba(240,180,41,0.5)');
+    divGrad.addColorStop(1,   'rgba(240,180,41,0)');
+    ctx.strokeStyle = divGrad;
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, 178); ctx.lineTo(W - PAD, 178);
+    ctx.stroke();
+
+    // Column headers
+    const colHdrY = 196;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font         = '20px sans-serif';
+    ctx.fillStyle    = '#5a7080';
+    ctx.fillText('🎯', xExact, colHdrY);
+    ctx.fillText('✅', xRes,   colHdrY);
+    ctx.textAlign = 'right';
+    ctx.font      = 'bold 17px sans-serif';
+    ctx.fillText('POINTS', xPts, colHdrY);
+
+    // Player rows
+    rankedUsers.forEach((u, i) => {
+      const rowY = HDR_H + i * ROW_H;
+      const midY = rowY + ROW_H / 2;
+
+      if (i % 2 === 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.beginPath();
+        ctx.roundRect(PAD - 12, rowY + 3, W - (PAD - 12) * 2, ROW_H - 5, 8);
+        ctx.fill();
+      }
+
+      // Rank
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font         = 'bold 24px "Bebas Neue", sans-serif';
+      ctx.fillStyle    = i < 3 ? ['#FFD700','#C0C0C0','#CD7F32'][i] : '#3a5060';
+      ctx.fillText(`${i + 1}`, xRank, midY);
+
+      // Name
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.font         = 'bold 32px "Bebas Neue", Arial Narrow, sans-serif';
+      ctx.fillStyle    = '#d8e8f5';
+      const maxLen     = 13;
+      const name       = u.nickname.length > maxLen ? u.nickname.slice(0, maxLen) + '\u2026' : u.nickname;
+      ctx.fillText(name, xName, midY);
+
+      // Exact
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font         = 'bold 30px "Bebas Neue", sans-serif';
+      ctx.fillStyle    = '#E8B800';
+      ctx.fillText(u.computedExact  || 0, xExact, midY);
+
+      // Result
+      ctx.fillStyle = '#27ae60';
+      ctx.fillText(u.computedWinner || 0, xRes, midY);
+
+      // Points
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#f0f4f8';
+      ctx.font      = 'bold 34px "Bebas Neue", sans-serif';
+      ctx.fillText(u.totalPoints || 0, xPts, midY);
+    });
+
+    // Footer
+    const footY = H - FOOT_H / 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, footY - 16); ctx.lineTo(W - PAD, footY - 16);
+    ctx.stroke();
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font         = '19px sans-serif';
+    ctx.fillStyle    = '#2a3a4a';
+    ctx.fillText('kpimdad.github.io/kph-wc26', W / 2, footY + 4);
+
+    // Share / download
+    canvas.toBlob(async blob => {
+      const file = new File([blob], 'kph-standings.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'KPH WC 2026 Standings' });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href = url; a.download = 'kph-standings.png'; a.click();
+        URL.revokeObjectURL(url);
+      }
+    }, 'image/png');
+
+  } catch (e) {
+    console.error('Share failed:', e);
+    showToast('Could not generate share image', 'error');
+  } finally {
+    btn.textContent = '📸';
+    btn.disabled    = false;
+  }
+}
+
 // ═══════════════════════════════════════════════════════
 // EVENT WIRING
 // ═══════════════════════════════════════════════════════
@@ -1825,6 +2016,7 @@ function wireEvents() {
   document.getElementById('recalc-all-btn').addEventListener('click', recalcAll);
   document.getElementById('rescore-all-btn').addEventListener('click', rescoreAllMatches);
   document.getElementById('run-audit-btn').addEventListener('click', runIntegrityAudit);
+  document.getElementById('share-standings-btn')?.addEventListener('click', shareStandings);
 
   // Champion modal
   const closeModal = () => { document.getElementById('champion-modal').style.display = 'none'; };
