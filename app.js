@@ -1012,6 +1012,8 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
   document.getElementById('leaderboard-updated').textContent =
     `Updated ${new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}`;
 
+  // Remove any stale legend before re-inserting
+  document.querySelectorAll('.lb-legend').forEach(el => el.remove());
   container.insertAdjacentHTML('afterend', `
     <div class="lb-legend">
       <span>MF</span> Matches Finished &nbsp;·&nbsp;
