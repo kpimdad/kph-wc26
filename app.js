@@ -216,7 +216,12 @@ function calculatePoints(pA, pB, rA, rB) {
 }
 
 // ── Firestore ──────────────────────────────────────────
-async function fetchMatches() {
+// Cache TTL: 2 minutes
+const CACHE_TTL = 2 * 60 * 1000;
+let _matchesFetchedAt = 0, _usersFetchedAt = 0, _predsFetchedAt = 0;
+
+async function fetchMatches(force = false) {
+  if (!force && STATE.matches.length && Date.now() - _matchesFetchedAt < CACHE_TTL) return;
   const snap = await getDocs(collection(STATE.db, 'matches'));
   const fs = {};
   snap.forEach(d => { fs[d.id] = d.data(); });
@@ -226,25 +231,30 @@ async function fetchMatches() {
     resultB: fs[m.matchId]?.resultB ?? null,
     status:  fs[m.matchId]?.status  ?? m.status,
   }));
+  _matchesFetchedAt = Date.now();
 }
 
-async function fetchMyPredictions() {
+async function fetchMyPredictions(force = false) {
   if (!STATE.session) return;
+  if (!force && Object.keys(STATE.predictions).length && Date.now() - _predsFetchedAt < CACHE_TTL) return;
   const snap = await getDocs(query(
     collection(STATE.db, 'predictions'),
     where('userId', '==', STATE.session.userId)
   ));
   STATE.predictions = {};
   snap.forEach(d => { const p = d.data(); STATE.predictions[p.matchId] = p; });
+  _predsFetchedAt = Date.now();
 }
 
-async function fetchUsers() {
+async function fetchUsers(force = false) {
+  if (!force && STATE.users.length && Date.now() - _usersFetchedAt < CACHE_TTL) return;
   const snap = await getDocs(collection(STATE.db, 'users'));
   STATE.users = [];
   snap.forEach(d => {
     if (!d.data().disabled && !d.data().isAdminAccount) STATE.users.push({ id: d.id, ...d.data() });
   });
   STATE.users.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
+  _usersFetchedAt = Date.now();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1381,6 +1391,8 @@ async function saveMatchResult(matchId, autoRA, autoRB) {
     if (autoRA === undefined) showToast(`✅ ${total} predictions scored: ${exact} exact, ${correct} correct`, 'success');
     const m = STATE.matches.find(x => x.matchId === matchId);
     if (m) { m.resultA = rA; m.resultB = rB; m.status = 'completed'; }
+    // Bust caches so next view load picks up fresh data
+    _matchesFetchedAt = 0; _usersFetchedAt = 0; _predsFetchedAt = 0;
   } catch (e) { showToast('Error saving result', 'error'); console.error(e); }
 }
 
