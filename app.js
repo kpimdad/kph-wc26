@@ -1923,6 +1923,9 @@ async function shareStandings() {
     ctx.font      = 'bold 22px sans-serif';
     ctx.fillText('POINTS', xPts, colHdrY);
 
+    // Rank arrows from localStorage snapshot
+    const shareCardPrevRanks = loadPrevRanks();
+
     // Player rows
     rankedUsers.forEach((u, i) => {
       const rowY = HDR_H + i * ROW_H;
@@ -1950,6 +1953,22 @@ async function shareStandings() {
       const maxLen     = 16;
       const name       = u.nickname.length > maxLen ? u.nickname.slice(0, maxLen) + '\u2026' : u.nickname;
       ctx.fillText(name, xName, midY);
+
+      // Rank arrow
+      const prevRankPos = shareCardPrevRanks[u.id];
+      if (prevRankPos != null) {
+        const diff = prevRankPos - (i + 1);
+        if (diff !== 0) {
+          const arrow    = diff > 0 ? `↑${diff}` : `↓${Math.abs(diff)}`;
+          const arrowCol = diff > 0 ? '#27ae60' : '#e74c3c';
+          ctx.font       = 'bold 42px "Bebas Neue", Arial Narrow, sans-serif';
+          const nW       = ctx.measureText(name).width;
+          ctx.font       = 'bold 20px sans-serif';
+          ctx.fillStyle  = arrowCol;
+          ctx.textAlign  = 'left';
+          ctx.fillText(arrow, xName + nW + 10, midY - 2);
+        }
+      }
 
       // Exact
       ctx.textAlign    = 'center';
