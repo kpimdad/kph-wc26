@@ -1811,18 +1811,18 @@ async function shareStandings() {
       .filter(u => !u.isAdminAccount)
       .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
 
-    const DPR    = 2;
-    const W      = 800;
-    const PAD    = 36;
-    const ROW_H  = 56;
-    const HDR_H  = 210;
-    const FOOT_H = 52;
+    const DPR    = 3;
+    const W      = 1080;
+    const PAD    = 48;
+    const ROW_H  = 68;
+    const HDR_H  = 250;
+    const FOOT_H = 62;
     const H      = HDR_H + rankedUsers.length * ROW_H + FOOT_H;
 
-    const xRank  = PAD + 20;
-    const xName  = PAD + 56;
-    const xExact = W - 270;
-    const xRes   = W - 170;
+    const xRank  = PAD + 24;
+    const xName  = PAD + 70;
+    const xExact = W - 340;
+    const xRes   = W - 200;
     const xPts   = W - PAD;
 
     const canvas  = document.createElement('canvas');
@@ -1869,21 +1869,21 @@ async function shareStandings() {
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.font      = '44px sans-serif';
+    ctx.font      = '58px sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('🏆', W / 2, 50);
+    ctx.fillText('🏆', W / 2, 60);
 
-    ctx.font         = 'bold 60px "Bebas Neue", Arial Narrow, sans-serif';
+    ctx.font         = 'bold 80px "Bebas Neue", Arial Narrow, sans-serif';
     ctx.fillStyle    = '#F0B429';
     ctx.shadowColor  = 'rgba(240,180,41,0.45)';
     ctx.shadowBlur   = 20;
-    ctx.fillText('KPH WC 2026', W / 2, 112);
+    ctx.fillText('KPH WC 2026', W / 2, 140);
     ctx.shadowBlur   = 0;
     ctx.shadowColor  = 'transparent';
 
-    ctx.font      = '22px sans-serif';
+    ctx.font      = '28px sans-serif';
     ctx.fillStyle = '#7a8fa8';
-    ctx.fillText(new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), W / 2, 154);
+    ctx.fillText(new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), W / 2, 194);
 
     // Divider
     const divGrad = ctx.createLinearGradient(0, 0, W, 0);
@@ -1894,19 +1894,19 @@ async function shareStandings() {
     ctx.strokeStyle = divGrad;
     ctx.lineWidth   = 1;
     ctx.beginPath();
-    ctx.moveTo(PAD, 178); ctx.lineTo(W - PAD, 178);
+    ctx.moveTo(PAD, 220); ctx.lineTo(W - PAD, 220);
     ctx.stroke();
 
     // Column headers
-    const colHdrY = 196;
+    const colHdrY = 238;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font         = '20px sans-serif';
+    ctx.font         = '26px sans-serif';
     ctx.fillStyle    = '#5a7080';
     ctx.fillText('🎯', xExact, colHdrY);
     ctx.fillText('✅', xRes,   colHdrY);
     ctx.textAlign = 'right';
-    ctx.font      = 'bold 17px sans-serif';
+    ctx.font      = 'bold 22px sans-serif';
     ctx.fillText('POINTS', xPts, colHdrY);
 
     // Player rows
@@ -1917,30 +1917,30 @@ async function shareStandings() {
       if (i % 2 === 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.05)';
         ctx.beginPath();
-        ctx.roundRect(PAD - 12, rowY + 3, W - (PAD - 12) * 2, ROW_H - 5, 8);
+        ctx.roundRect(PAD - 14, rowY + 3, W - (PAD - 14) * 2, ROW_H - 6, 10);
         ctx.fill();
       }
 
       // Rank
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font         = 'bold 24px "Bebas Neue", sans-serif';
+      ctx.font         = 'bold 32px "Bebas Neue", sans-serif';
       ctx.fillStyle    = i < 3 ? ['#FFD700','#C0C0C0','#CD7F32'][i] : '#3a5060';
       ctx.fillText(`${i + 1}`, xRank, midY);
 
       // Name
       ctx.textAlign    = 'left';
       ctx.textBaseline = 'middle';
-      ctx.font         = 'bold 32px "Bebas Neue", Arial Narrow, sans-serif';
+      ctx.font         = 'bold 42px "Bebas Neue", Arial Narrow, sans-serif';
       ctx.fillStyle    = '#d8e8f5';
-      const maxLen     = 13;
+      const maxLen     = 16;
       const name       = u.nickname.length > maxLen ? u.nickname.slice(0, maxLen) + '\u2026' : u.nickname;
       ctx.fillText(name, xName, midY);
 
       // Exact
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font         = 'bold 30px "Bebas Neue", sans-serif';
+      ctx.font         = 'bold 40px "Bebas Neue", sans-serif';
       ctx.fillStyle    = '#E8B800';
       ctx.fillText(u.computedExact  || 0, xExact, midY);
 
@@ -1951,7 +1951,7 @@ async function shareStandings() {
       // Points
       ctx.textAlign = 'right';
       ctx.fillStyle = '#f0f4f8';
-      ctx.font      = 'bold 34px "Bebas Neue", sans-serif';
+      ctx.font      = 'bold 46px "Bebas Neue", sans-serif';
       ctx.fillText(u.totalPoints || 0, xPts, midY);
     });
 
@@ -1964,7 +1964,7 @@ async function shareStandings() {
     ctx.stroke();
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font         = '19px sans-serif';
+    ctx.font         = '24px sans-serif';
     ctx.fillStyle    = '#2a3a4a';
     ctx.fillText('kpimdad.github.io/kph-wc26', W / 2, footY + 4);
 
