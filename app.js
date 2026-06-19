@@ -1085,41 +1085,103 @@ function renderMyPredictions() {
   document.getElementById('stat-acc').textContent    = accuracy + '%';
 
   const container = document.getElementById('my-preds-list');
-  if (Object.keys(groups).length === 0) {
+
+  // Split predictions: pending (no result yet) vs done (result in)
+  const predMap = {};
+  Object.values(groups).flat().forEach(({ m, p }) => { predMap[m.matchId] = { m, p }; });
+  const donePreds    = Object.values(predMap).filter(({ m }) => m.resultA != null && m.resultB != null);
+  const pendingPreds = Object.values(predMap).filter(({ m }) => m.resultA == null || m.resultB == null);
+
+  // Also find upcoming matches with NO prediction yet
+  const predictedIds = new Set(Object.values(predMap).map(({ m }) => m.matchId));
+  const unpredicted  = STATE.matches.filter(m => !predictedIds.has(m.matchId) && m.resultA == null);
+
+  const currentTab   = container._predTab || 'upcoming';
+
+  function renderPredCard({ m, p }) {
+    const pts = p.pointsAwarded;
+    const ptsCls = pts === 13 ? 'exact' : pts === 10 ? 'winner' : pts === 0 ? 'wrong' : 'none';
+    const ptsLabel = pts === 13 ? '+13' : pts === 10 ? '+10' : pts === 0 ? '0' : '–';
+    const result = m.resultA != null ? `${m.resultA} – ${m.resultB}` : null;
+    return `<div class="pred-fm-card">
+      <div class="pred-fm-row">
+        <div class="pred-fm-team">
+          <span class="pred-fm-flag">${getFlag(m.teamA, m.flagA)}</span>
+          <span class="pred-fm-name">${m.teamA}</span>
+        </div>
+        <div class="pred-fm-center">
+          <div class="pred-fm-my-score">${p.predictedA} – ${p.predictedB}</div>
+          <div class="pred-fm-score-label">MY PICK</div>
+          ${result
+            ? `<div class="pred-fm-result">${result}</div><div class="pred-fm-score-label">RESULT</div>`
+            : `<div class="pred-fm-result pending">?–?</div><div class="pred-fm-score-label">PENDING</div>`}
+        </div>
+        <div class="pred-fm-team right">
+          <span class="pred-fm-flag">${getFlag(m.teamB, m.flagB)}</span>
+          <span class="pred-fm-name">${m.teamB}</span>
+        </div>
+      </div>
+      <div class="pred-fm-pts ${ptsCls}">${ptsLabel} pts</div>
+    </div>`;
+  }
+
+  function buildPredGroups(items) {
+    const g = {};
+    items.forEach(({ m, p }) => { if (!g[m.matchDay]) g[m.matchDay] = []; g[m.matchDay].push({ m, p }); });
+    return g;
+  }
+
+  function renderTabContent(tab) {
+    container._predTab = tab;
+    document.querySelectorAll('#my-preds-list .match-tab-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === tab));
+
+    const content = container.querySelector('.pred-tab-content');
+    if (tab === 'upcoming') {
+      const g = buildPredGroups(pendingPreds);
+      const unpredHtml = unpredicted.length
+        ? `<div style="font-size:0.75rem;color:var(--muted);text-align:center;padding:0.5rem 0 0.25rem">
+             ${unpredicted.length} upcoming match${unpredicted.length>1?'es':''} without a prediction yet
+           </div>` : '';
+      content.innerHTML = Object.keys(g).length === 0
+        ? `${unpredHtml}<div class="empty-state"><div class="empty-state-icon">🎯</div><div class="empty-state-text">All your predictions have results!</div></div>`
+        : unpredHtml + Object.entries(g).map(([day, items]) => `
+            <div class="matchday-group">
+              <div class="matchday-label">${day}</div>
+              ${items.map(renderPredCard).join('')}
+            </div>`).join('');
+    } else {
+      const g = buildPredGroups(donePreds);
+      content.innerHTML = Object.keys(g).length === 0
+        ? `<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">No finished matches yet</div></div>`
+        : Object.entries(g).map(([day, items]) => `
+            <div class="matchday-group">
+              <div class="matchday-label">${day}</div>
+              ${items.map(renderPredCard).join('')}
+            </div>`).join('');
+    }
+  }
+
+  if (Object.keys(groups).length === 0 && unpredicted.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No predictions yet — go make some!</div></div>`;
     return;
   }
-  container.innerHTML = Object.entries(groups).map(([day, items]) => `
-    <div class="matchday-group">
-      <div class="matchday-label">${day}</div>
-      ${items.map(({ m, p }) => {
-        const pts = p.pointsAwarded;
-        const ptsCls = pts === 13 ? 'exact' : pts === 10 ? 'winner' : pts === 0 ? 'wrong' : 'none';
-        const ptsLabel = pts === 13 ? '+13' : pts === 10 ? '+10' : pts === 0 ? '0' : '–';
-        const result = m.resultA != null ? `${m.resultA} – ${m.resultB}` : null;
 
-        return `<div class="pred-fm-card">
-          <div class="pred-fm-row">
-            <div class="pred-fm-team">
-              <span class="pred-fm-flag">${getFlag(m.teamA, m.flagA)}</span>
-              <span class="pred-fm-name">${m.teamA}</span>
-            </div>
-            <div class="pred-fm-center">
-              <div class="pred-fm-my-score">${p.predictedA} – ${p.predictedB}</div>
-              <div class="pred-fm-score-label">MY PICK</div>
-              ${result
-                ? `<div class="pred-fm-result">${result}</div><div class="pred-fm-score-label">RESULT</div>`
-                : `<div class="pred-fm-result pending">?–?</div><div class="pred-fm-score-label">PENDING</div>`}
-            </div>
-            <div class="pred-fm-team right">
-              <span class="pred-fm-flag">${getFlag(m.teamB, m.flagB)}</span>
-              <span class="pred-fm-name">${m.teamB}</span>
-            </div>
-          </div>
-          <div class="pred-fm-pts ${ptsCls}">${ptsLabel} pts</div>
-        </div>`;
-      }).join('')}
-    </div>`).join('');
+  container.innerHTML = `
+    <div class="match-tabs">
+      <button class="match-tab-btn${currentTab==='upcoming'?' active':''}" data-tab="upcoming">
+        Upcoming <span class="match-tab-count">${pendingPreds.length}</span>
+      </button>
+      <button class="match-tab-btn${currentTab==='done'?' active':''}" data-tab="done">
+        Finished <span class="match-tab-count">${donePreds.length}</span>
+      </button>
+    </div>
+    <div class="pred-tab-content"></div>`;
+
+  container.querySelectorAll('.match-tab-btn').forEach(b =>
+    b.addEventListener('click', () => renderTabContent(b.dataset.tab)));
+
+  renderTabContent(currentTab);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1227,21 +1289,39 @@ async function addAdminUser() {
   } catch (e) { showToast('Error adding user', 'error'); console.error(e); }
 }
 
+let adminMatchTab = 'upcoming';
+
 function renderAdminMatches() {
   const container = document.getElementById('admin-match-list');
+  const finished  = STATE.matches.filter(m => m.resultA != null && m.resultB != null);
+  const upcoming  = STATE.matches.filter(m => m.resultA == null || m.resultB == null);
+  const list      = adminMatchTab === 'finished' ? finished : upcoming;
+
   const byDay = {};
-  STATE.matches.forEach(m => { if (!byDay[m.matchDay]) byDay[m.matchDay] = []; byDay[m.matchDay].push(m); });
+  list.forEach(m => { if (!byDay[m.matchDay]) byDay[m.matchDay] = []; byDay[m.matchDay].push(m); });
 
   const fetchBtn = `
-    <div style="margin-bottom:1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+    <div style="margin-bottom:0.75rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
       <a href="https://github.com/kpimdad/kph-wc26/actions/workflows/fetch-results.yml"
          target="_blank" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem">
         🔄 Run Fetch Now
       </a>
-      <span style="font-size:0.78rem;color:var(--muted)">Auto-runs every hour via GitHub Actions · click to trigger manually</span>
+      <span style="font-size:0.78rem;color:var(--muted)">Auto-runs every hour · click to trigger manually</span>
     </div>`;
 
-  container.innerHTML = fetchBtn + Object.entries(byDay).map(([day, matches]) => `
+  const tabs = `
+    <div class="match-tabs" style="margin-bottom:0.75rem">
+      <button class="match-tab-btn${adminMatchTab==='upcoming'?' active':''}" onclick="adminMatchTab='upcoming';renderAdminMatches()">
+        Upcoming <span class="match-tab-count">${upcoming.length}</span>
+      </button>
+      <button class="match-tab-btn${adminMatchTab==='finished'?' active':''}" onclick="adminMatchTab='finished';renderAdminMatches()">
+        Finished <span class="match-tab-count">${finished.length}</span>
+      </button>
+    </div>`;
+
+  const rows = Object.entries(byDay).length === 0
+    ? `<div class="empty-state"><div class="empty-state-icon">${adminMatchTab==='finished'?'✅':'⏳'}</div><div class="empty-state-text">No ${adminMatchTab} matches</div></div>`
+    : Object.entries(byDay).map(([day, matches]) => `
     <div class="admin-card" style="margin-bottom:1rem">
       <div class="admin-card-head">${day}</div>
       <div class="admin-card-body" style="padding:0">
@@ -1266,6 +1346,8 @@ function renderAdminMatches() {
         }).join('')}
       </div>
     </div>`).join('');
+
+  container.innerHTML = fetchBtn + tabs + rows;
 }
 
 // ── Save a single match result (manual or auto) ────────

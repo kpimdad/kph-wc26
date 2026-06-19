@@ -1797,3 +1797,43 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
 
 /* Toast above bottom nav (desktop) */
 #toast-container { bottom: calc(90px + env(safe-area-inset-bottom)); }
+
+/* ── Match tabs (admin + my preds) ──────────────────── */
+.match-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+.match-tab-btn {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.45rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.match-tab-btn.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #0A1628;
+  font-weight: 700;
+}
+.match-tab-count {
+  background: rgba(0,0,0,0.18);
+  border-radius: 10px;
+  font-size: 0.7rem;
+  padding: 0.05rem 0.4rem;
+  font-weight: 600;
+}
+.match-tab-btn.active .match-tab-count {
+  background: rgba(0,0,0,0.2);
+}
