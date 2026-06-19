@@ -80,6 +80,14 @@ async function main() {
   const finished = (data.matches || []).filter(m => m.status === 'FINISHED');
   console.log(`Found ${finished.length} finished match(es) from API (${dateFrom} – ${dateTo})`);
 
+  // Debug: show first 5 API matches so we can verify team names & times
+  finished.slice(0, 5).forEach(m => {
+    console.log(`  API: ${m.homeTeam?.name} vs ${m.awayTeam?.name} @ ${m.utcDate} → ${m.score?.fullTime?.home}-${m.score?.fullTime?.away}`);
+  });
+
+  // Normalise team name for fuzzy matching
+  function norm(s) { return (s || '').toLowerCase().replace(/[^a-z]/g, ''); }
+
   let updated = 0;
 
   for (const apiMatch of finished) {
@@ -87,11 +95,23 @@ async function main() {
     const rB = apiMatch.score?.fullTime?.away;
     if (rA == null || rB == null) continue;
 
-    // Match by kickoff time (±5 min tolerance)
+    // Match by kickoff time (±10 min tolerance), then fallback to team names
     const apiTime = new Date(apiMatch.utcDate).getTime();
-    const ourMatch = MATCHES.find(
-      m => Math.abs(new Date(m.kickoffUTC).getTime() - apiTime) < 5 * 60 * 1000
+    const apiHome = norm(apiMatch.homeTeam?.name);
+    const apiAway = norm(apiMatch.awayTeam?.name);
+
+    let ourMatch = MATCHES.find(
+      m => Math.abs(new Date(m.kickoffUTC).getTime() - apiTime) < 10 * 60 * 1000
     );
+
+    if (!ourMatch) {
+      // Fallback: match by team names (normalised)
+      ourMatch = MATCHES.find(m =>
+        norm(m.teamA) === apiHome && norm(m.teamB) === apiAway ||
+        norm(m.teamA) === apiAway && norm(m.teamB) === apiHome
+      );
+      if (ourMatch) console.log(`  ℹ Matched by team name (time mismatch): ${ourMatch.teamA} vs ${ourMatch.teamB}`);
+    }
 
     if (!ourMatch) {
       console.log(`  ⚠ No local match for: ${apiMatch.homeTeam?.name} vs ${apiMatch.awayTeam?.name} @ ${apiMatch.utcDate}`);
