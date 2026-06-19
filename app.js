@@ -1850,7 +1850,7 @@ async function shareStandings() {
       const i = new Image();
       i.onload = () => res(i);
       i.onerror = rej;
-      i.src = '26.jpg';
+      i.src = 'wc.png';
     });
     const sc = Math.max(W / img.naturalWidth, H / img.naturalHeight);
     ctx.drawImage(img,
@@ -1943,7 +1943,25 @@ async function shareStandings() {
       ctx.textBaseline = 'middle';
       ctx.font         = 'bold 32px "Bebas Neue", sans-serif';
       ctx.fillStyle    = i < 3 ? ['#FFD700','#C0C0C0','#CD7F32'][i] : '#3a5060';
-      ctx.fillText(`${i + 1}`, xRank, midY);
+      ctx.fillText(`${i + 1}`, xRank, midY - 8);
+
+      // Rank movement arrow below rank number
+      const prevRankPos = shareCardPrevRanks[u.id];
+      if (prevRankPos != null) {
+        const diff = prevRankPos - (i + 1);
+        ctx.font      = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        if (diff > 0) {
+          ctx.fillStyle = '#27ae60';
+          ctx.fillText(`↑${diff}`, xRank, midY + 14);
+        } else if (diff < 0) {
+          ctx.fillStyle = '#e74c3c';
+          ctx.fillText(`↓${Math.abs(diff)}`, xRank, midY + 14);
+        } else {
+          ctx.fillStyle = '#3a5060';
+          ctx.fillText('—', xRank, midY + 14);
+        }
+      }
 
       // Name
       ctx.textAlign    = 'left';
@@ -1953,22 +1971,6 @@ async function shareStandings() {
       const maxLen     = 16;
       const name       = u.nickname.length > maxLen ? u.nickname.slice(0, maxLen) + '\u2026' : u.nickname;
       ctx.fillText(name, xName, midY);
-
-      // Rank arrow
-      const prevRankPos = shareCardPrevRanks[u.id];
-      if (prevRankPos != null) {
-        const diff = prevRankPos - (i + 1);
-        if (diff !== 0) {
-          const arrow    = diff > 0 ? `↑${diff}` : `↓${Math.abs(diff)}`;
-          const arrowCol = diff > 0 ? '#27ae60' : '#e74c3c';
-          ctx.font       = 'bold 42px "Bebas Neue", Arial Narrow, sans-serif';
-          const nW       = ctx.measureText(name).width;
-          ctx.font       = 'bold 20px sans-serif';
-          ctx.fillStyle  = arrowCol;
-          ctx.textAlign  = 'left';
-          ctx.fillText(arrow, xName + nW + 10, midY - 2);
-        }
-      }
 
       // Exact
       ctx.textAlign    = 'center';
