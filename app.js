@@ -216,6 +216,15 @@ function calculatePoints(pA, pB, rA, rB) {
 }
 
 // ── Firestore ──────────────────────────────────────────
+
+// Tiebreaker: pts → exact scores → correct results → fewer matches played
+function tiebreakSort(a, b) {
+  if ((b.totalPoints || 0) !== (a.totalPoints || 0)) return (b.totalPoints || 0) - (a.totalPoints || 0);
+  if ((b.exactScores || 0) !== (a.exactScores || 0)) return (b.exactScores || 0) - (a.exactScores || 0);
+  if ((b.correctResults || 0) !== (a.correctResults || 0)) return (b.correctResults || 0) - (a.correctResults || 0);
+  return (a.predictionsSubmitted || a.exactScores + a.correctResults || 0) - (b.predictionsSubmitted || b.exactScores + b.correctResults || 0);
+}
+
 // Cache TTL: 2 minutes
 const CACHE_TTL = 2 * 60 * 1000;
 let _matchesFetchedAt = 0, _usersFetchedAt = 0, _predsFetchedAt = 0;
@@ -253,7 +262,7 @@ async function fetchUsers(force = false) {
   snap.forEach(d => {
     if (!d.data().disabled && !d.data().isAdminAccount) STATE.users.push({ id: d.id, ...d.data() });
   });
-  STATE.users.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
+  STATE.users.sort(tiebreakSort);
   _usersFetchedAt = Date.now();
 }
 
@@ -925,7 +934,12 @@ async function buildFilteredLeaderboard(matchIds, filter) {
     ...u, filteredPoints: pts[u.id] || 0,
     filteredExact: exact[u.id] || 0, filteredWinner: winner[u.id] || 0,
     filteredPredCount: predCount[u.id] || 0,
-  })).sort((a, b) => b.filteredPoints - a.filteredPoints);
+  })).sort((a, b) => {
+    if (b.filteredPoints !== a.filteredPoints) return b.filteredPoints - a.filteredPoints;
+    if ((b.exactScores||0) !== (a.exactScores||0)) return (b.exactScores||0) - (a.exactScores||0);
+    if ((b.correctResults||0) !== (a.correctResults||0)) return (b.correctResults||0) - (a.correctResults||0);
+    return (a.predictionsSubmitted||0) - (b.predictionsSubmitted||0);
+  });
   renderLeaderboardTable(sorted, filter, totalCompleted);
 }
 
@@ -1809,7 +1823,7 @@ async function shareStandings() {
   try {
     const rankedUsers = [...STATE.users]
       .filter(u => !u.isAdminAccount)
-      .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
+      .sort(tiebreakSort);
 
     const DPR    = 3;
     const W      = 1080;
