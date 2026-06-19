@@ -377,7 +377,7 @@ function normaliseNick(str) {
   return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-const REGISTRATION_OPEN = true;
+const REGISTRATION_OPEN = false;
 
 async function handleRegister() {
   if (!REGISTRATION_OPEN) {
