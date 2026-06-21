@@ -29,7 +29,7 @@
     import { initializeApp }         from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
     import { getFirestore, collection, doc, getDoc, getDocs,
              setDoc, updateDoc, query, where, orderBy,
-             serverTimestamp, writeBatch }
+             serverTimestamp, writeBatch, arrayUnion }
              from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
     // Expose to global scope so app.js (loaded as classic script) can access
@@ -37,7 +37,7 @@
     window.firebaseFirestore  = {
       getFirestore, collection, doc, getDoc, getDocs,
       setDoc, updateDoc, query, where, orderBy,
-      serverTimestamp, writeBatch
+      serverTimestamp, writeBatch, arrayUnion
     };
 
     // Signal ready

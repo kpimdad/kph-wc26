@@ -8,7 +8,7 @@
 const { initializeApp }                                   = window.firebaseApp;
 const { getFirestore, collection, doc, getDoc, getDocs,
         setDoc, updateDoc, query, where, orderBy,
-        serverTimestamp, writeBatch }                     = window.firebaseFirestore;
+        serverTimestamp, writeBatch, arrayUnion }           = window.firebaseFirestore;
 
 // ── Subdivision flag fix (Scotland / England / Wales use invisible tag chars
 //    that get stripped when saved as UTF-8 text; define them here in JS instead)
@@ -740,7 +740,21 @@ async function savePrediction() {
       predictedA: scoreA, predictedB: scoreB,
       updatedAt: serverTimestamp(), lastMinute: lastMin,
     };
-    if (!existing) pred.submittedAt = serverTimestamp();
+    if (!existing) {
+      pred.submittedAt = serverTimestamp();
+    } else {
+      // Audit trail: record the previous prediction before overwriting
+      const auditEntry = {
+        changedAt:  new Date().toISOString(),
+        fromA:      existing.predictedA,
+        fromB:      existing.predictedB,
+        toA:        scoreA,
+        toB:        scoreB,
+        matchStatus: m.status,
+        lastMinute:  lastMin,
+      };
+      pred.editHistory = arrayUnion(auditEntry);
+    }
     await setDoc(doc(STATE.db, 'predictions', predId), pred, { merge: true });
     saved = true; // ← primary write succeeded; never show error toast after this point
 
