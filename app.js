@@ -1252,8 +1252,16 @@ function setAdminTab(tab) {
 
 async function renderAdminUsers() {
   await fetchUsers();
+
+  // Also fetch disabled users
+  const allSnap = await getDocs(collection(STATE.db, 'users'));
+  const disabledUsers = [];
+  allSnap.forEach(d => {
+    if (d.data().disabled && !d.data().isAdminAccount) disabledUsers.push({ id: d.id, ...d.data() });
+  });
+
   const list = document.getElementById('admin-user-list');
-  list.innerHTML = STATE.users.map(u => `
+  const activeHtml = STATE.users.map(u => `
     <div class="user-row">
       <div class="user-info" style="display:flex;align-items:center;gap:.75rem">
         ${getAvatarHTML(u, 32)}
@@ -1265,9 +1273,24 @@ async function renderAdminUsers() {
       <div style="display:flex;gap:0.4rem;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn-sm btn-secondary" data-rename-user="${u.id}" data-nickname="${u.nickname}">✏️ Rename</button>
         <button class="btn-sm btn-secondary" data-resetpin-user="${u.id}" data-nickname="${u.nickname}">🔑 Reset PIN</button>
-        <button class="btn-sm btn-danger"    data-delete-user="${u.id}">Delete</button>
+        <button class="btn-sm btn-danger"    data-delete-user="${u.id}">Disable</button>
       </div>
     </div>`).join('');
+
+  const disabledHtml = disabledUsers.length ? `
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Disabled Users</div>
+      ${disabledUsers.map(u => `
+        <div class="user-row" style="opacity:0.6">
+          <div class="user-info" style="display:flex;align-items:center;gap:.75rem">
+            ${getAvatarHTML(u, 32)}
+            <div><div class="user-nickname">${u.nickname}</div></div>
+          </div>
+          <button class="btn-sm btn-secondary" data-enable-user="${u.id}" data-nickname="${u.nickname}">✅ Re-enable</button>
+        </div>`).join('')}
+    </div>` : '';
+
+  list.innerHTML = activeHtml + disabledHtml;
 
   list.querySelectorAll('[data-rename-user]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -1303,9 +1326,18 @@ async function renderAdminUsers() {
 
   list.querySelectorAll('[data-delete-user]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Delete this user?')) return;
+      if (!confirm('Disable this user?')) return;
       await updateDoc(doc(STATE.db, 'users', btn.dataset.deleteUser), { disabled: true });
       showToast('User disabled', 'success'); renderAdminUsers();
+    });
+  });
+
+  list.querySelectorAll('[data-enable-user]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Re-enable ${btn.dataset.nickname}?`)) return;
+      await updateDoc(doc(STATE.db, 'users', btn.dataset.enableUser), { disabled: false });
+      _usersFetchedAt = 0;
+      showToast(`${btn.dataset.nickname} re-enabled`, 'success'); renderAdminUsers();
     });
   });
 }
