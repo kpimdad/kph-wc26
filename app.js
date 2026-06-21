@@ -1165,9 +1165,15 @@ function renderMyPredictions() {
     </div>`;
   }
 
-  function buildPredGroups(items) {
+  function buildPredGroups(items, reverseTime = false) {
+    // Sort items by kickoff time before grouping
+    const sorted = [...items].sort((a, b) =>
+      reverseTime
+        ? new Date(b.m.kickoffUTC) - new Date(a.m.kickoffUTC)
+        : new Date(a.m.kickoffUTC) - new Date(b.m.kickoffUTC)
+    );
     const g = {};
-    items.forEach(({ m, p }) => { if (!g[m.matchDay]) g[m.matchDay] = []; g[m.matchDay].push({ m, p }); });
+    sorted.forEach(({ m, p }) => { if (!g[m.matchDay]) g[m.matchDay] = []; g[m.matchDay].push({ m, p }); });
     return g;
   }
 
@@ -1178,7 +1184,7 @@ function renderMyPredictions() {
 
     const content = container.querySelector('.pred-tab-content');
     if (tab === 'upcoming') {
-      const g = buildPredGroups(pendingPreds);
+      const g = buildPredGroups(pendingPreds, false); // soonest first
       const unpredHtml = unpredicted.length
         ? `<div style="font-size:0.75rem;color:var(--muted);text-align:center;padding:0.5rem 0 0.25rem">
              ${unpredicted.length} upcoming match${unpredicted.length>1?'es':''} without a prediction yet
@@ -1191,7 +1197,7 @@ function renderMyPredictions() {
               ${items.map(renderPredCard).join('')}
             </div>`).join('');
     } else {
-      const g = buildPredGroups(donePreds);
+      const g = buildPredGroups(donePreds, true); // latest first
       content.innerHTML = Object.keys(g).length === 0
         ? `<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">No finished matches yet</div></div>`
         : Object.entries(g).map(([day, items]) => `
@@ -1333,8 +1339,12 @@ let adminMatchTab = 'upcoming';
 
 function renderAdminMatches() {
   const container = document.getElementById('admin-match-list');
-  const finished  = STATE.matches.filter(m => m.resultA != null && m.resultB != null);
-  const upcoming  = STATE.matches.filter(m => m.resultA == null || m.resultB == null);
+  const finished  = STATE.matches
+    .filter(m => m.resultA != null && m.resultB != null)
+    .sort((a, b) => new Date(b.kickoffUTC) - new Date(a.kickoffUTC)); // latest first
+  const upcoming  = STATE.matches
+    .filter(m => m.resultA == null || m.resultB == null)
+    .sort((a, b) => new Date(a.kickoffUTC) - new Date(b.kickoffUTC)); // soonest first
   const list      = adminMatchTab === 'finished' ? finished : upcoming;
 
   const byDay = {};
