@@ -720,7 +720,7 @@ async function savePrediction() {
   const m = STATE.currentPredictMatch;
   if (!m || !STATE.session) return;
   if (STATE.session.isAdmin) { showToast('Admin cannot submit predictions', 'error'); return; }
-  if (isLocked(m)) { showToast('Predictions are closed for this match', 'lock'); return; }
+  if (isLocked(m) || m.status === 'completed' || m.status === 'locked') { showToast('Predictions are closed for this match', 'lock'); return; }
 
   // Guard against double-submit (numpad done key + save button both firing)
   const btn = document.getElementById('predict-save-btn');
