@@ -58,10 +58,10 @@ function fetchAPI(path) {
 async function main() {
   console.log(`[${new Date().toISOString()}] Starting WC result sync…`);
 
-  // Fetch all finished WC matches from tournament start to tomorrow (UTC).
-  // This ensures we catch up on any missed results from previous days.
-  const dateFrom = '2026-06-11';
-  const dateTo   = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  // Fetch only yesterday + today + tomorrow to avoid Firestore quota exhaustion.
+  // Already-scored matches are skipped anyway, so this is safe.
+  const dateFrom = new Date(Date.now() - 86400000).toISOString().slice(0, 10); // yesterday
+  const dateTo   = new Date(Date.now() + 86400000).toISOString().slice(0, 10); // tomorrow
   console.log(`Fetching finished results from ${dateFrom} to ${dateTo}`);
 
   let data;
