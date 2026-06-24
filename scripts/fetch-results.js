@@ -10,9 +10,8 @@
  */
 
 'use strict';
-const https   = require('https');
-const path    = require('path');
-const admin   = require('firebase-admin');
+const https = require('https');
+const admin = require('firebase-admin');
 
 // ── Load MATCHES index (matchId + kickoffUTC + teams) ─────────────────────────
 const MATCHES = require('./matches-index.json');
@@ -54,48 +53,37 @@ function fetchAPI(path) {
   });
 }
 
+// ── Normalise team name for fuzzy matching ────────────────────────────────────
+function norm(s) { return (s || '').toLowerCase().replace(/[^a-z]/g, ''); }
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   console.log(`[${new Date().toISOString()}] Starting WC result sync…`);
 
-  // Fetch only yesterday + today + tomorrow to avoid Firestore quota exhaustion.
-  // Already-scored matches are skipped anyway, so this is safe.
-  const dateFrom = new Date(Date.now() - 86400000).toISOString().slice(0, 10); // yesterday
-  const dateTo   = new Date(Date.now() + 86400000).toISOString().slice(0, 10); // tomorrow
-  console.log(`Fetching finished results from ${dateFrom} to ${dateTo}`);
+  // Only fetch yesterday + today to minimise Firestore quota usage
+  const dateFrom = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const dateTo   = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  console.log(`Fetching finished results: ${dateFrom} – ${dateTo}`);
 
   let data;
   try {
     data = await fetchAPI(`/v4/competitions/WC/matches?status=FINISHED&dateFrom=${dateFrom}&dateTo=${dateTo}`);
   } catch (e) {
-    console.warn('Primary fetch failed:', e.message);
-    try {
-      data = await fetchAPI(`/v4/competitions/WC/matches?status=FINISHED&season=2026`);
-    } catch (e2) {
-      console.error('Both API calls failed:', e2.message);
-      data = { matches: [] };
-    }
+    console.error('API fetch failed:', e.message);
+    process.exit(1);
   }
 
   const finished = (data.matches || []).filter(m => m.status === 'FINISHED');
-  console.log(`Found ${finished.length} finished match(es) from API (${dateFrom} – ${dateTo})`);
+  console.log(`Found ${finished.length} finished match(es) from API`);
+  if (finished.length === 0) { process.exit(0); }
 
-  // Debug: show first 5 API matches so we can verify team names & times
-  finished.slice(0, 5).forEach(m => {
-    console.log(`  API: ${m.homeTeam?.name} vs ${m.awayTeam?.name} @ ${m.utcDate} → ${m.score?.fullTime?.home}-${m.score?.fullTime?.away}`);
-  });
-
-  // Normalise team name for fuzzy matching
-  function norm(s) { return (s || '').toLowerCase().replace(/[^a-z]/g, ''); }
-
-  let updated = 0;
-
+  // ── Match API results to our local fixtures ───────────────────────────────
+  const toProcess = [];
   for (const apiMatch of finished) {
     const rA = apiMatch.score?.fullTime?.home;
     const rB = apiMatch.score?.fullTime?.away;
     if (rA == null || rB == null) continue;
 
-    // Match by kickoff time (±10 min tolerance), then fallback to team names
     const apiTime = new Date(apiMatch.utcDate).getTime();
     const apiHome = norm(apiMatch.homeTeam?.name);
     const apiAway = norm(apiMatch.awayTeam?.name);
@@ -103,77 +91,105 @@ async function main() {
     let ourMatch = MATCHES.find(
       m => Math.abs(new Date(m.kickoffUTC).getTime() - apiTime) < 10 * 60 * 1000
     );
-
     if (!ourMatch) {
-      // Fallback: match by team names (normalised)
       ourMatch = MATCHES.find(m =>
-        norm(m.teamA) === apiHome && norm(m.teamB) === apiAway ||
-        norm(m.teamA) === apiAway && norm(m.teamB) === apiHome
+        (norm(m.teamA) === apiHome && norm(m.teamB) === apiAway) ||
+        (norm(m.teamA) === apiAway && norm(m.teamB) === apiHome)
       );
-      if (ourMatch) console.log(`  ℹ Matched by team name (time mismatch): ${ourMatch.teamA} vs ${ourMatch.teamB}`);
+      if (ourMatch) console.log(`  ℹ Matched by team name: ${ourMatch.teamA} vs ${ourMatch.teamB}`);
     }
-
     if (!ourMatch) {
-      console.log(`  ⚠ No local match for: ${apiMatch.homeTeam?.name} vs ${apiMatch.awayTeam?.name} @ ${apiMatch.utcDate}`);
+      console.log(`  ⚠ No local match: ${apiMatch.homeTeam?.name} vs ${apiMatch.awayTeam?.name} @ ${apiMatch.utcDate}`);
       continue;
     }
+    toProcess.push({ ourMatch, rA, rB });
+  }
 
-    // Check existing Firestore state
-    const matchRef = db.collection('matches').doc(ourMatch.matchId);
-    const matchDoc = await matchRef.get();
-    const current  = matchDoc.exists ? matchDoc.data() : {};
+  if (toProcess.length === 0) {
+    console.log('No matches to process.');
+    process.exit(0);
+  }
+
+  // ── Batch-read all match docs in one round-trip ───────────────────────────
+  const matchRefs = toProcess.map(({ ourMatch }) => db.collection('matches').doc(ourMatch.matchId));
+  const matchDocs = await db.getAll(...matchRefs);
+
+  // ── For each match: score predictions and accumulate user deltas ──────────
+  // Defer all user reads until we know every affected user ID.
+  const allUserDeltas = {};   // uid → cumulative delta across all matches
+  const predBatchOps  = [];   // { ref, pts } to batch-write
+  const updatedMatches = [];
+
+  for (let i = 0; i < toProcess.length; i++) {
+    const { ourMatch, rA, rB } = toProcess[i];
+    const current = matchDocs[i].exists ? matchDocs[i].data() : {};
 
     if (current.resultA === rA && current.resultB === rB && current.status === 'completed') {
       console.log(`  — Already scored: ${ourMatch.teamA} ${rA}–${rB} ${ourMatch.teamB}`);
       continue;
     }
 
-    // Write result to Firestore
-    await matchRef.set({ resultA: rA, resultB: rB, status: 'completed' }, { merge: true });
+    // Write result
+    await matchRefs[i].set({ resultA: rA, resultB: rB, status: 'completed' }, { merge: true });
 
-    // Score all predictions for this match
+    // Read predictions for this match
     const predsSnap = await db.collection('predictions')
       .where('matchId', '==', ourMatch.matchId).get();
-
-    const predBatch = db.batch();
-    const deltas = {};
 
     let skipped = 0;
     predsSnap.forEach(doc => {
       const p    = doc.data();
       const pts  = calculatePoints(p.predictedA, p.predictedB, rA, rB);
       const prev = p.pointsAwarded ?? null;
-      if (prev === pts) { skipped++; return; }  // already correct — skip write
-      predBatch.update(doc.ref, { pointsAwarded: pts });
-      deltas[p.userId] = (deltas[p.userId] || 0) + (pts - (prev ?? 0));
+      if (prev === pts) { skipped++; return; }
+      predBatchOps.push({ ref: doc.ref, pts });
+      const delta = pts - (prev ?? 0);
+      allUserDeltas[p.userId] = (allUserDeltas[p.userId] || 0) + delta;
     });
-    if (skipped > 0) console.log(`    (skipped ${skipped} predictions already at correct score)`);
+    if (skipped > 0) console.log(`    (skipped ${skipped} already-correct predictions)`);
 
-    await predBatch.commit();
-
-    // Update user total points
-    const userBatch = db.batch();
-    for (const [uid, delta] of Object.entries(deltas)) {
-      if (delta === 0) continue;
-      const uRef  = db.collection('users').doc(uid);
-      const uSnap = await uRef.get();
-      if (uSnap.exists) {
-        userBatch.update(uRef, { totalPoints: (uSnap.data().totalPoints || 0) + delta });
-      }
-    }
-    await userBatch.commit();
-
-    console.log(`  ✅ ${ourMatch.teamA} ${rA}–${rB} ${ourMatch.teamB} · ${predsSnap.size} prediction(s) scored`);
-    updated++;
+    updatedMatches.push({ ourMatch, rA, rB, count: predsSnap.size });
   }
 
-  // Write last-sync timestamp to Firestore so the app can show it
+  // ── Batch-write prediction scores ─────────────────────────────────────────
+  if (predBatchOps.length > 0) {
+    const predBatch = db.batch();
+    predBatchOps.forEach(({ ref, pts }) => predBatch.update(ref, { pointsAwarded: pts }));
+    await predBatch.commit();
+    console.log(`  Wrote ${predBatchOps.length} prediction score(s)`);
+  }
+
+  // ── Batch-read ALL affected users in one round-trip ───────────────────────
+  const affectedUids = Object.keys(allUserDeltas).filter(uid => allUserDeltas[uid] !== 0);
+  if (affectedUids.length > 0) {
+    const userRefs  = affectedUids.map(uid => db.collection('users').doc(uid));
+    const userDocs  = await db.getAll(...userRefs);
+    const userBatch = db.batch();
+
+    userDocs.forEach((snap, idx) => {
+      if (!snap.exists) return;
+      const uid   = affectedUids[idx];
+      const delta = allUserDeltas[uid];
+      const prev  = snap.data().totalPoints || 0;
+      userBatch.update(userRefs[idx], { totalPoints: prev + delta });
+    });
+
+    await userBatch.commit();
+    console.log(`  Updated ${affectedUids.length} user point total(s)`);
+  }
+
+  // ── Log results ───────────────────────────────────────────────────────────
+  for (const { ourMatch, rA, rB, count } of updatedMatches) {
+    console.log(`  ✅ ${ourMatch.teamA} ${rA}–${rB} ${ourMatch.teamB} · ${count} prediction(s) scored`);
+  }
+
+  // ── Write last-sync timestamp ─────────────────────────────────────────────
   await db.collection('config').doc('lastSync').set({
     syncedAt: admin.firestore.FieldValue.serverTimestamp(),
-    matchesUpdated: updated
+    matchesUpdated: updatedMatches.length
   });
 
-  console.log(`Done. ${updated} match(es) updated.`);
+  console.log(`Done. ${updatedMatches.length} match(es) updated.`);
   process.exit(0);
 }
 
