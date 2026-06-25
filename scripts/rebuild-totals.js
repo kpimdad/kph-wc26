@@ -29,7 +29,12 @@ async function main() {
   console.log(`Users: ${Object.keys(users).length}`);
 
   // Sum per-match predictions
-  const completedMatches = MATCHES.filter(m => m.status === 'completed');
+// Load completed match IDs from Firestore (matches-index.json has no status)
+  const mSnap = await db.collection('matches').where('status', '==', 'completed').get();
+  const completedIds = new Set();
+  mSnap.forEach(d => completedIds.add(d.id));
+  const completedMatches = MATCHES.filter(m => completedIds.has(m.matchId));
+  console.log(`Completed matches in Firestore: ${completedMatches.length}`);
   console.log(`Completed matches: ${completedMatches.length}`);
 
   for (const m of completedMatches) {
