@@ -1644,12 +1644,16 @@ async function recalcAll() {
     const validUids = new Set();
     const totals = {};
     uSnap.forEach(d => { validUids.add(d.id); totals[d.id] = 0; });
-    const pSnap = await getDocs(collection(STATE.db, 'predictions'));
-    pSnap.forEach(d => {
-      const p = d.data();
-      if (p.pointsAwarded != null && validUids.has(p.userId))
-        totals[p.userId] = (totals[p.userId] || 0) + p.pointsAwarded;
-    });
+    // Query per completed match instead of full predictions scan (avoids Firestore rules block)
+    const completedMatches = STATE.matches.filter(m => m.status === 'completed' && m.resultA != null);
+    for (const m of completedMatches) {
+      const pSnap = await getDocs(query(collection(STATE.db, 'predictions'), where('matchId', '==', m.matchId)));
+      pSnap.forEach(d => {
+        const p = d.data();
+        if (p.pointsAwarded != null && validUids.has(p.userId))
+          totals[p.userId] = (totals[p.userId] || 0) + p.pointsAwarded;
+      });
+    }
     const batch = writeBatch(STATE.db);
     Object.entries(totals).forEach(([uid, pts]) => batch.update(doc(STATE.db, 'users', uid), { totalPoints: pts }));
     await batch.commit();
@@ -1679,17 +1683,19 @@ async function rescoreAllMatches() {
       await batch.commit();
     }
 
-    // Now rebuild all user totals from the freshly-scored pointsAwarded values
+    // Rebuild totals using per-match queries (avoids Firestore rules block on full scan)
     const uSnap = await getDocs(collection(STATE.db, 'users'));
     const validUids = new Set();
     const totals = {};
     uSnap.forEach(d => { validUids.add(d.id); totals[d.id] = 0; });
-    const allPreds = await getDocs(collection(STATE.db, 'predictions'));
-    allPreds.forEach(d => {
-      const p = d.data();
-      if (p.pointsAwarded != null && validUids.has(p.userId))
-        totals[p.userId] = (totals[p.userId] || 0) + p.pointsAwarded;
-    });
+    for (const m of completedMatches) {
+      const pSnap2 = await getDocs(query(collection(STATE.db, 'predictions'), where('matchId', '==', m.matchId)));
+      pSnap2.forEach(d => {
+        const p = d.data();
+        if (p.pointsAwarded != null && validUids.has(p.userId))
+          totals[p.userId] = (totals[p.userId] || 0) + p.pointsAwarded;
+      });
+    }
     const uBatch = writeBatch(STATE.db);
     Object.entries(totals).forEach(([uid, pts]) => uBatch.update(doc(STATE.db, 'users', uid), { totalPoints: pts }));
     await uBatch.commit();
@@ -1706,10 +1712,7 @@ async function runIntegrityAudit() {
   resultsEl.innerHTML = '<p style="color:var(--silver);font-size:0.875rem">Running audit…</p>';
 
   try {
-    const [uSnap, pSnap] = await Promise.all([
-      getDocs(collection(STATE.db, 'users')),
-      getDocs(collection(STATE.db, 'predictions')),
-    ]);
+    const uSnap = await getDocs(collection(STATE.db, 'users'));
 
     // Build userId → nickname map
     const nickMap = {};
@@ -1719,27 +1722,32 @@ async function runIntegrityAudit() {
     const lockMap = {};
     STATE.matches.forEach(m => { lockMap[m.matchId] = new Date(m.kickoffUTC).getTime() - 5 * 60 * 1000; });
 
+    // Query per completed match instead of full scan (avoids Firestore rules block)
+    const completedForAudit = STATE.matches.filter(m => m.status === 'completed' && m.resultA != null);
     const suspicious = [];
-    pSnap.forEach(d => {
-      const p = d.data();
-      if (p.backdated === true) return;                          // admin backdate tool — legit
-      if (!p.updatedAt) return;                                  // no timestamp to check
-      const lockMs = lockMap[p.matchId];
-      if (!lockMs) return;                                       // unknown match
-      const updMs = p.updatedAt.toMillis ? p.updatedAt.toMillis() : p.updatedAt.seconds * 1000;
-      if (updMs > lockMs) {
-        suspicious.push({
-          docId: d.id,
-          user: nickMap[p.userId] || p.userId,
-          matchId: p.matchId,
-          score: `${p.predictedA}–${p.predictedB}`,
-          pts: p.pointsAwarded ?? '?',
-          updatedAt: new Date(updMs).toISOString().replace('T', ' ').slice(0, 19) + ' UTC',
-          lockTime: new Date(lockMs).toISOString().replace('T', ' ').slice(0, 19) + ' UTC',
-          minsAfterLock: Math.round((updMs - lockMs) / 60000),
-        });
-      }
-    });
+    for (const m of completedForAudit) {
+      const pSnap = await getDocs(query(collection(STATE.db, 'predictions'), where('matchId', '==', m.matchId)));
+      pSnap.forEach(d => {
+        const p = d.data();
+        if (p.backdated === true) return;                          // admin backdate tool — legit
+        if (!p.updatedAt) return;                                  // no timestamp to check
+        const lockMs = lockMap[p.matchId];
+        if (!lockMs) return;                                       // unknown match
+        const updMs = p.updatedAt.toMillis ? p.updatedAt.toMillis() : p.updatedAt.seconds * 1000;
+        if (updMs > lockMs) {
+          suspicious.push({
+            docId: d.id,
+            user: nickMap[p.userId] || p.userId,
+            matchId: p.matchId,
+            score: `${p.predictedA}–${p.predictedB}`,
+            pts: p.pointsAwarded ?? '?',
+            updatedAt: new Date(updMs).toISOString().replace('T', ' ').slice(0, 19) + ' UTC',
+            lockTime: new Date(lockMs).toISOString().replace('T', ' ').slice(0, 19) + ' UTC',
+            minsAfterLock: Math.round((updMs - lockMs) / 60000),
+          });
+        }
+      });
+    }
 
     if (suspicious.length === 0) {
       resultsEl.innerHTML = '<p style="color:#2ecc71;font-size:0.9rem">✅ No suspicious predictions found. All clear.</p>';
