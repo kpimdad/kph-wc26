@@ -8,7 +8,7 @@
 const { initializeApp }                                   = window.firebaseApp;
 const { getFirestore, collection, doc, getDoc, getDocs,
         setDoc, updateDoc, query, where, orderBy,
-        serverTimestamp, writeBatch }                     = window.firebaseFirestore;
+        serverTimestamp, writeBatch, arrayUnion }           = window.firebaseFirestore;
 
 // ── Subdivision flag fix (Scotland / England / Wales use invisible tag chars
 //    that get stripped when saved as UTF-8 text; define them here in JS instead)
@@ -216,7 +216,21 @@ function calculatePoints(pA, pB, rA, rB) {
 }
 
 // ── Firestore ──────────────────────────────────────────
-async function fetchMatches() {
+
+// Tiebreaker: pts → exact scores → correct results → fewer matches played
+function tiebreakSort(a, b) {
+  if ((b.totalPoints || 0) !== (a.totalPoints || 0)) return (b.totalPoints || 0) - (a.totalPoints || 0);
+  if ((b.exactScores || 0) !== (a.exactScores || 0)) return (b.exactScores || 0) - (a.exactScores || 0);
+  if ((b.correctResults || 0) !== (a.correctResults || 0)) return (b.correctResults || 0) - (a.correctResults || 0);
+  return (a.predictionsSubmitted || a.exactScores + a.correctResults || 0) - (b.predictionsSubmitted || b.exactScores + b.correctResults || 0);
+}
+
+// Cache TTL: 2 minutes
+const CACHE_TTL = 2 * 60 * 1000;
+let _matchesFetchedAt = 0, _usersFetchedAt = 0, _predsFetchedAt = 0;
+
+async function fetchMatches(force = false) {
+  if (!force && STATE.matches.length && Date.now() - _matchesFetchedAt < CACHE_TTL) return;
   const snap = await getDocs(collection(STATE.db, 'matches'));
   const fs = {};
   snap.forEach(d => { fs[d.id] = d.data(); });
@@ -226,25 +240,30 @@ async function fetchMatches() {
     resultB: fs[m.matchId]?.resultB ?? null,
     status:  fs[m.matchId]?.status  ?? m.status,
   }));
+  _matchesFetchedAt = Date.now();
 }
 
-async function fetchMyPredictions() {
+async function fetchMyPredictions(force = false) {
   if (!STATE.session) return;
+  if (!force && Object.keys(STATE.predictions).length && Date.now() - _predsFetchedAt < CACHE_TTL) return;
   const snap = await getDocs(query(
     collection(STATE.db, 'predictions'),
     where('userId', '==', STATE.session.userId)
   ));
   STATE.predictions = {};
   snap.forEach(d => { const p = d.data(); STATE.predictions[p.matchId] = p; });
+  _predsFetchedAt = Date.now();
 }
 
-async function fetchUsers() {
+async function fetchUsers(force = false) {
+  if (!force && STATE.users.length && Date.now() - _usersFetchedAt < CACHE_TTL) return;
   const snap = await getDocs(collection(STATE.db, 'users'));
   STATE.users = [];
   snap.forEach(d => {
     if (!d.data().disabled && !d.data().isAdminAccount) STATE.users.push({ id: d.id, ...d.data() });
   });
-  STATE.users.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
+  STATE.users.sort(tiebreakSort);
+  _usersFetchedAt = Date.now();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -358,7 +377,7 @@ function normaliseNick(str) {
   return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-const REGISTRATION_OPEN = true;
+const REGISTRATION_OPEN = false;
 
 async function handleRegister() {
   if (!REGISTRATION_OPEN) {
@@ -701,7 +720,7 @@ async function savePrediction() {
   const m = STATE.currentPredictMatch;
   if (!m || !STATE.session) return;
   if (STATE.session.isAdmin) { showToast('Admin cannot submit predictions', 'error'); return; }
-  if (isLocked(m)) { showToast('Predictions are closed for this match', 'lock'); return; }
+  if (isLocked(m) || m.status === 'completed' || m.status === 'locked') { showToast('Predictions are closed for this match', 'lock'); return; }
 
   // Guard against double-submit (numpad done key + save button both firing)
   const btn = document.getElementById('predict-save-btn');
@@ -721,7 +740,21 @@ async function savePrediction() {
       predictedA: scoreA, predictedB: scoreB,
       updatedAt: serverTimestamp(), lastMinute: lastMin,
     };
-    if (!existing) pred.submittedAt = serverTimestamp();
+    if (!existing) {
+      pred.submittedAt = serverTimestamp();
+    } else {
+      // Audit trail: record the previous prediction before overwriting
+      const auditEntry = {
+        changedAt:  new Date().toISOString(),
+        fromA:      existing.predictedA,
+        fromB:      existing.predictedB,
+        toA:        scoreA,
+        toB:        scoreB,
+        matchStatus: m.status,
+        lastMinute:  lastMin,
+      };
+      pred.editHistory = arrayUnion(auditEntry);
+    }
     await setDoc(doc(STATE.db, 'predictions', predId), pred, { merge: true });
     saved = true; // ← primary write succeeded; never show error toast after this point
 
@@ -915,7 +948,12 @@ async function buildFilteredLeaderboard(matchIds, filter) {
     ...u, filteredPoints: pts[u.id] || 0,
     filteredExact: exact[u.id] || 0, filteredWinner: winner[u.id] || 0,
     filteredPredCount: predCount[u.id] || 0,
-  })).sort((a, b) => b.filteredPoints - a.filteredPoints);
+  })).sort((a, b) => {
+    if (b.filteredPoints !== a.filteredPoints) return b.filteredPoints - a.filteredPoints;
+    if ((b.exactScores||0) !== (a.exactScores||0)) return (b.exactScores||0) - (a.exactScores||0);
+    if ((b.correctResults||0) !== (a.correctResults||0)) return (b.correctResults||0) - (a.correctResults||0);
+    return (a.predictionsSubmitted||0) - (b.predictionsSubmitted||0);
+  });
   renderLeaderboardTable(sorted, filter, totalCompleted);
 }
 
@@ -1002,6 +1040,8 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
   document.getElementById('leaderboard-updated').textContent =
     `Updated ${new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}`;
 
+  // Remove any stale legend before re-inserting
+  document.querySelectorAll('.lb-legend').forEach(el => el.remove());
   container.insertAdjacentHTML('afterend', `
     <div class="lb-legend">
       <span>MF</span> Matches Finished &nbsp;·&nbsp;
@@ -1045,8 +1085,8 @@ function populateLeaderboardFilter() {
   const sel = document.getElementById('leaderboard-filter');
   const matchDays = [...new Set(STATE.matches.map(m => m.matchDay))];
   sel.innerHTML =
-    '<option value="overall">🏅 Overall</option>' +
-    '<option value="this-match-day">📅 This Match Day</option>' +
+    '<option value="overall">Overall</option>' +
+    '<option value="this-match-day">This Match Day</option>' +
     '<optgroup label="By Week">' +
     ['Jun 11–17','Jun 18–24','Jun 25–Jul 1','Jul 2–8','Jul 9–15','Jul 16–19']
       .map((l, i) => `<option value="week-${i+1}">Week ${i+1} (${l})</option>`).join('') +
@@ -1085,41 +1125,109 @@ function renderMyPredictions() {
   document.getElementById('stat-acc').textContent    = accuracy + '%';
 
   const container = document.getElementById('my-preds-list');
-  if (Object.keys(groups).length === 0) {
+
+  // Split predictions: pending (no result yet) vs done (result in)
+  const predMap = {};
+  Object.values(groups).flat().forEach(({ m, p }) => { predMap[m.matchId] = { m, p }; });
+  const donePreds    = Object.values(predMap).filter(({ m }) => m.resultA != null && m.resultB != null);
+  const pendingPreds = Object.values(predMap).filter(({ m }) => m.resultA == null || m.resultB == null);
+
+  // Also find upcoming matches with NO prediction yet
+  const predictedIds = new Set(Object.values(predMap).map(({ m }) => m.matchId));
+  const unpredicted  = STATE.matches.filter(m => !predictedIds.has(m.matchId) && m.resultA == null);
+
+  const currentTab   = container._predTab || 'upcoming';
+
+  function renderPredCard({ m, p }) {
+    const pts = p.pointsAwarded;
+    const ptsCls = pts === 13 ? 'exact' : pts === 10 ? 'winner' : pts === 0 ? 'wrong' : 'none';
+    const ptsLabel = pts === 13 ? '+13' : pts === 10 ? '+10' : pts === 0 ? '0' : '–';
+    const result = m.resultA != null ? `${m.resultA} – ${m.resultB}` : null;
+    return `<div class="pred-fm-card">
+      <div class="pred-fm-row">
+        <div class="pred-fm-team">
+          <span class="pred-fm-flag">${getFlag(m.teamA, m.flagA)}</span>
+          <span class="pred-fm-name">${m.teamA}</span>
+        </div>
+        <div class="pred-fm-center">
+          <div class="pred-fm-my-score">${p.predictedA} – ${p.predictedB}</div>
+          <div class="pred-fm-score-label">MY PICK</div>
+          ${result
+            ? `<div class="pred-fm-result">${result}</div><div class="pred-fm-score-label">RESULT</div>`
+            : `<div class="pred-fm-result pending">?–?</div><div class="pred-fm-score-label">PENDING</div>`}
+        </div>
+        <div class="pred-fm-team right">
+          <span class="pred-fm-flag">${getFlag(m.teamB, m.flagB)}</span>
+          <span class="pred-fm-name">${m.teamB}</span>
+        </div>
+      </div>
+      <div class="pred-fm-pts ${ptsCls}">${ptsLabel} pts</div>
+    </div>`;
+  }
+
+  function buildPredGroups(items, reverseTime = false) {
+    // Sort items by kickoff time before grouping
+    const sorted = [...items].sort((a, b) =>
+      reverseTime
+        ? new Date(b.m.kickoffUTC) - new Date(a.m.kickoffUTC)
+        : new Date(a.m.kickoffUTC) - new Date(b.m.kickoffUTC)
+    );
+    const g = {};
+    sorted.forEach(({ m, p }) => { if (!g[m.matchDay]) g[m.matchDay] = []; g[m.matchDay].push({ m, p }); });
+    return g;
+  }
+
+  function renderTabContent(tab) {
+    container._predTab = tab;
+    document.querySelectorAll('#my-preds-list .match-tab-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === tab));
+
+    const content = container.querySelector('.pred-tab-content');
+    if (tab === 'upcoming') {
+      const g = buildPredGroups(pendingPreds, false); // soonest first
+      const unpredHtml = unpredicted.length
+        ? `<div style="font-size:0.75rem;color:var(--muted);text-align:center;padding:0.5rem 0 0.25rem">
+             ${unpredicted.length} upcoming match${unpredicted.length>1?'es':''} without a prediction yet
+           </div>` : '';
+      content.innerHTML = Object.keys(g).length === 0
+        ? `${unpredHtml}<div class="empty-state"><div class="empty-state-icon">🎯</div><div class="empty-state-text">All your predictions have results!</div></div>`
+        : unpredHtml + Object.entries(g).map(([day, items]) => `
+            <div class="matchday-group">
+              <div class="matchday-label">${day}</div>
+              ${items.map(renderPredCard).join('')}
+            </div>`).join('');
+    } else {
+      const g = buildPredGroups(donePreds, true); // latest first
+      content.innerHTML = Object.keys(g).length === 0
+        ? `<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">No finished matches yet</div></div>`
+        : Object.entries(g).map(([day, items]) => `
+            <div class="matchday-group">
+              <div class="matchday-label">${day}</div>
+              ${items.map(renderPredCard).join('')}
+            </div>`).join('');
+    }
+  }
+
+  if (Object.keys(groups).length === 0 && unpredicted.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No predictions yet — go make some!</div></div>`;
     return;
   }
-  container.innerHTML = Object.entries(groups).map(([day, items]) => `
-    <div class="matchday-group">
-      <div class="matchday-label">${day}</div>
-      ${items.map(({ m, p }) => {
-        const pts = p.pointsAwarded;
-        const ptsCls = pts === 13 ? 'exact' : pts === 10 ? 'winner' : pts === 0 ? 'wrong' : 'none';
-        const ptsLabel = pts === 13 ? '+13' : pts === 10 ? '+10' : pts === 0 ? '0' : '–';
-        const result = m.resultA != null ? `${m.resultA} – ${m.resultB}` : null;
 
-        return `<div class="pred-fm-card">
-          <div class="pred-fm-row">
-            <div class="pred-fm-team">
-              <span class="pred-fm-flag">${getFlag(m.teamA, m.flagA)}</span>
-              <span class="pred-fm-name">${m.teamA}</span>
-            </div>
-            <div class="pred-fm-center">
-              <div class="pred-fm-my-score">${p.predictedA} – ${p.predictedB}</div>
-              <div class="pred-fm-score-label">MY PICK</div>
-              ${result
-                ? `<div class="pred-fm-result">${result}</div><div class="pred-fm-score-label">RESULT</div>`
-                : `<div class="pred-fm-result pending">?–?</div><div class="pred-fm-score-label">PENDING</div>`}
-            </div>
-            <div class="pred-fm-team right">
-              <span class="pred-fm-flag">${getFlag(m.teamB, m.flagB)}</span>
-              <span class="pred-fm-name">${m.teamB}</span>
-            </div>
-          </div>
-          <div class="pred-fm-pts ${ptsCls}">${ptsLabel} pts</div>
-        </div>`;
-      }).join('')}
-    </div>`).join('');
+  container.innerHTML = `
+    <div class="match-tabs">
+      <button class="match-tab-btn${currentTab==='upcoming'?' active':''}" data-tab="upcoming">
+        Upcoming <span class="match-tab-count">${pendingPreds.length}</span>
+      </button>
+      <button class="match-tab-btn${currentTab==='done'?' active':''}" data-tab="done">
+        Finished <span class="match-tab-count">${donePreds.length}</span>
+      </button>
+    </div>
+    <div class="pred-tab-content"></div>`;
+
+  container.querySelectorAll('.match-tab-btn').forEach(b =>
+    b.addEventListener('click', () => renderTabContent(b.dataset.tab)));
+
+  renderTabContent(currentTab);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1144,8 +1252,16 @@ function setAdminTab(tab) {
 
 async function renderAdminUsers() {
   await fetchUsers();
+
+  // Also fetch disabled users
+  const allSnap = await getDocs(collection(STATE.db, 'users'));
+  const disabledUsers = [];
+  allSnap.forEach(d => {
+    if (d.data().disabled && !d.data().isAdminAccount) disabledUsers.push({ id: d.id, ...d.data() });
+  });
+
   const list = document.getElementById('admin-user-list');
-  list.innerHTML = STATE.users.map(u => `
+  const activeHtml = STATE.users.map(u => `
     <div class="user-row">
       <div class="user-info" style="display:flex;align-items:center;gap:.75rem">
         ${getAvatarHTML(u, 32)}
@@ -1157,9 +1273,24 @@ async function renderAdminUsers() {
       <div style="display:flex;gap:0.4rem;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn-sm btn-secondary" data-rename-user="${u.id}" data-nickname="${u.nickname}">✏️ Rename</button>
         <button class="btn-sm btn-secondary" data-resetpin-user="${u.id}" data-nickname="${u.nickname}">🔑 Reset PIN</button>
-        <button class="btn-sm btn-danger"    data-delete-user="${u.id}">Delete</button>
+        <button class="btn-sm btn-danger"    data-delete-user="${u.id}">Disable</button>
       </div>
     </div>`).join('');
+
+  const disabledHtml = disabledUsers.length ? `
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Disabled Users</div>
+      ${disabledUsers.map(u => `
+        <div class="user-row" style="opacity:0.6">
+          <div class="user-info" style="display:flex;align-items:center;gap:.75rem">
+            ${getAvatarHTML(u, 32)}
+            <div><div class="user-nickname">${u.nickname}</div></div>
+          </div>
+          <button class="btn-sm btn-secondary" data-enable-user="${u.id}" data-nickname="${u.nickname}">✅ Re-enable</button>
+        </div>`).join('')}
+    </div>` : '';
+
+  list.innerHTML = activeHtml + disabledHtml;
 
   list.querySelectorAll('[data-rename-user]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -1195,9 +1326,18 @@ async function renderAdminUsers() {
 
   list.querySelectorAll('[data-delete-user]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Delete this user?')) return;
+      if (!confirm('Disable this user?')) return;
       await updateDoc(doc(STATE.db, 'users', btn.dataset.deleteUser), { disabled: true });
       showToast('User disabled', 'success'); renderAdminUsers();
+    });
+  });
+
+  list.querySelectorAll('[data-enable-user]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Re-enable ${btn.dataset.nickname}?`)) return;
+      await updateDoc(doc(STATE.db, 'users', btn.dataset.enableUser), { disabled: false });
+      _usersFetchedAt = 0;
+      showToast(`${btn.dataset.nickname} re-enabled`, 'success'); renderAdminUsers();
     });
   });
 }
@@ -1227,21 +1367,43 @@ async function addAdminUser() {
   } catch (e) { showToast('Error adding user', 'error'); console.error(e); }
 }
 
+let adminMatchTab = 'upcoming';
+
 function renderAdminMatches() {
   const container = document.getElementById('admin-match-list');
+  const finished  = STATE.matches
+    .filter(m => m.resultA != null && m.resultB != null)
+    .sort((a, b) => new Date(b.kickoffUTC) - new Date(a.kickoffUTC)); // latest first
+  const upcoming  = STATE.matches
+    .filter(m => m.resultA == null || m.resultB == null)
+    .sort((a, b) => new Date(a.kickoffUTC) - new Date(b.kickoffUTC)); // soonest first
+  const list      = adminMatchTab === 'finished' ? finished : upcoming;
+
   const byDay = {};
-  STATE.matches.forEach(m => { if (!byDay[m.matchDay]) byDay[m.matchDay] = []; byDay[m.matchDay].push(m); });
+  list.forEach(m => { if (!byDay[m.matchDay]) byDay[m.matchDay] = []; byDay[m.matchDay].push(m); });
 
   const fetchBtn = `
-    <div style="margin-bottom:1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+    <div style="margin-bottom:0.75rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
       <a href="https://github.com/kpimdad/kph-wc26/actions/workflows/fetch-results.yml"
          target="_blank" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem">
         🔄 Run Fetch Now
       </a>
-      <span style="font-size:0.78rem;color:var(--muted)">Auto-runs every hour via GitHub Actions · click to trigger manually</span>
+      <span style="font-size:0.78rem;color:var(--muted)">Auto-runs every hour · click to trigger manually</span>
     </div>`;
 
-  container.innerHTML = fetchBtn + Object.entries(byDay).map(([day, matches]) => `
+  const tabs = `
+    <div class="match-tabs" style="margin-bottom:0.75rem">
+      <button class="match-tab-btn${adminMatchTab==='upcoming'?' active':''}" onclick="adminMatchTab='upcoming';renderAdminMatches()">
+        Upcoming <span class="match-tab-count">${upcoming.length}</span>
+      </button>
+      <button class="match-tab-btn${adminMatchTab==='finished'?' active':''}" onclick="adminMatchTab='finished';renderAdminMatches()">
+        Finished <span class="match-tab-count">${finished.length}</span>
+      </button>
+    </div>`;
+
+  const rows = Object.entries(byDay).length === 0
+    ? `<div class="empty-state"><div class="empty-state-icon">${adminMatchTab==='finished'?'✅':'⏳'}</div><div class="empty-state-text">No ${adminMatchTab} matches</div></div>`
+    : Object.entries(byDay).map(([day, matches]) => `
     <div class="admin-card" style="margin-bottom:1rem">
       <div class="admin-card-head">${day}</div>
       <div class="admin-card-body" style="padding:0">
@@ -1266,6 +1428,8 @@ function renderAdminMatches() {
         }).join('')}
       </div>
     </div>`).join('');
+
+  container.innerHTML = fetchBtn + tabs + rows;
 }
 
 // ── Save a single match result (manual or auto) ────────
@@ -1299,6 +1463,8 @@ async function saveMatchResult(matchId, autoRA, autoRB) {
     if (autoRA === undefined) showToast(`✅ ${total} predictions scored: ${exact} exact, ${correct} correct`, 'success');
     const m = STATE.matches.find(x => x.matchId === matchId);
     if (m) { m.resultA = rA; m.resultB = rB; m.status = 'completed'; }
+    // Bust caches so next view load picks up fresh data
+    _matchesFetchedAt = 0; _usersFetchedAt = 0; _predsFetchedAt = 0;
   } catch (e) { showToast('Error saving result', 'error'); console.error(e); }
 }
 
@@ -1478,18 +1644,12 @@ async function recalcAll() {
     const validUids = new Set();
     const totals = {};
     uSnap.forEach(d => { validUids.add(d.id); totals[d.id] = 0; });
-
-    // Query per completed match instead of a full predictions scan (avoids Firestore rules block)
-    const completedMatches = STATE.matches.filter(m => m.status === 'completed' && m.resultA != null);
-    for (const m of completedMatches) {
-      const pSnap = await getDocs(query(collection(STATE.db, 'predictions'), where('matchId', '==', m.matchId)));
-      pSnap.forEach(d => {
-        const p = d.data();
-        if (p.pointsAwarded != null && validUids.has(p.userId))
-          totals[p.userId] = (totals[p.userId] || 0) + p.pointsAwarded;
-      });
-    }
-
+    const pSnap = await getDocs(collection(STATE.db, 'predictions'));
+    pSnap.forEach(d => {
+      const p = d.data();
+      if (p.pointsAwarded != null && validUids.has(p.userId))
+        totals[p.userId] = (totals[p.userId] || 0) + p.pointsAwarded;
+    });
     const batch = writeBatch(STATE.db);
     Object.entries(totals).forEach(([uid, pts]) => batch.update(doc(STATE.db, 'users', uid), { totalPoints: pts }));
     await batch.commit();
@@ -1519,19 +1679,17 @@ async function rescoreAllMatches() {
       await batch.commit();
     }
 
-    // Rebuild user totals using per-match queries (avoids Firestore rules block on full scan)
+    // Now rebuild all user totals from the freshly-scored pointsAwarded values
     const uSnap = await getDocs(collection(STATE.db, 'users'));
     const validUids = new Set();
     const totals = {};
     uSnap.forEach(d => { validUids.add(d.id); totals[d.id] = 0; });
-    for (const m of completedMatches) {
-      const pSnap2 = await getDocs(query(collection(STATE.db, 'predictions'), where('matchId', '==', m.matchId)));
-      pSnap2.forEach(d => {
-        const p = d.data();
-        if (p.pointsAwarded != null && validUids.has(p.userId))
-          totals[p.userId] = (totals[p.userId] || 0) + p.pointsAwarded;
-      });
-    }
+    const allPreds = await getDocs(collection(STATE.db, 'predictions'));
+    allPreds.forEach(d => {
+      const p = d.data();
+      if (p.pointsAwarded != null && validUids.has(p.userId))
+        totals[p.userId] = (totals[p.userId] || 0) + p.pointsAwarded;
+    });
     const uBatch = writeBatch(STATE.db);
     Object.entries(totals).forEach(([uid, pts]) => uBatch.update(doc(STATE.db, 'users', uid), { totalPoints: pts }));
     await uBatch.commit();
@@ -1548,22 +1706,21 @@ async function runIntegrityAudit() {
   resultsEl.innerHTML = '<p style="color:var(--silver);font-size:0.875rem">Running audit…</p>';
 
   try {
-    const uSnap = await getDocs(collection(STATE.db, 'users'));
+    const [uSnap, pSnap] = await Promise.all([
+      getDocs(collection(STATE.db, 'users')),
+      getDocs(collection(STATE.db, 'predictions')),
+    ]);
 
     // Build userId → nickname map
     const nickMap = {};
     uSnap.forEach(d => { nickMap[d.id] = d.data().nickname || d.id; });
 
-    // Build matchId → lockMs map (completed matches only — others can't have post-lock edits)
+    // Build matchId → lockMs map
     const lockMap = {};
     STATE.matches.forEach(m => { lockMap[m.matchId] = new Date(m.kickoffUTC).getTime() - 5 * 60 * 1000; });
 
-    const completedForAudit = STATE.matches.filter(m => m.status === 'completed' && m.resultA != null);
     const suspicious = [];
-
-    for (const m of completedForAudit) {
-      const pSnap = await getDocs(query(collection(STATE.db, 'predictions'), where('matchId', '==', m.matchId)));
-      pSnap.forEach(d => {
+    pSnap.forEach(d => {
       const p = d.data();
       if (p.backdated === true) return;                          // admin backdate tool — legit
       if (!p.updatedAt) return;                                  // no timestamp to check
@@ -1583,7 +1740,6 @@ async function runIntegrityAudit() {
         });
       }
     });
-    } // end for completedForAudit
 
     if (suspicious.length === 0) {
       resultsEl.innerHTML = '<p style="color:#2ecc71;font-size:0.9rem">✅ No suspicious predictions found. All clear.</p>';
@@ -1723,20 +1879,20 @@ async function shareStandings() {
   try {
     const rankedUsers = [...STATE.users]
       .filter(u => !u.isAdminAccount)
-      .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
+      .sort(tiebreakSort);
 
-    const DPR    = 2;
-    const W      = 800;
-    const PAD    = 36;
-    const ROW_H  = 56;
-    const HDR_H  = 210;
-    const FOOT_H = 52;
+    const DPR    = 3;
+    const W      = 1080;
+    const PAD    = 48;
+    const ROW_H  = 68;
+    const HDR_H  = 250;
+    const FOOT_H = 62;
     const H      = HDR_H + rankedUsers.length * ROW_H + FOOT_H;
 
-    const xRank  = PAD + 20;
-    const xName  = PAD + 56;
-    const xExact = W - 270;
-    const xRes   = W - 170;
+    const xRank  = PAD + 24;
+    const xName  = PAD + 70;
+    const xExact = W - 340;
+    const xRes   = W - 200;
     const xPts   = W - PAD;
 
     const canvas  = document.createElement('canvas');
@@ -1750,7 +1906,7 @@ async function shareStandings() {
       const i = new Image();
       i.onload = () => res(i);
       i.onerror = rej;
-      i.src = '26.jpg';
+      i.src = 'wc.png';
     });
     const sc = Math.max(W / img.naturalWidth, H / img.naturalHeight);
     ctx.drawImage(img,
@@ -1783,21 +1939,21 @@ async function shareStandings() {
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.font      = '44px sans-serif';
+    ctx.font      = '58px sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('🏆', W / 2, 50);
+    ctx.fillText('🏆', W / 2, 60);
 
-    ctx.font         = 'bold 60px "Bebas Neue", Arial Narrow, sans-serif';
+    ctx.font         = 'bold 80px "Bebas Neue", Arial Narrow, sans-serif';
     ctx.fillStyle    = '#F0B429';
     ctx.shadowColor  = 'rgba(240,180,41,0.45)';
     ctx.shadowBlur   = 20;
-    ctx.fillText('KPH WC 2026', W / 2, 112);
+    ctx.fillText('KPH WC 2026', W / 2, 140);
     ctx.shadowBlur   = 0;
     ctx.shadowColor  = 'transparent';
 
-    ctx.font      = '22px sans-serif';
+    ctx.font      = '28px sans-serif';
     ctx.fillStyle = '#7a8fa8';
-    ctx.fillText(new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), W / 2, 154);
+    ctx.fillText(new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), W / 2, 194);
 
     // Divider
     const divGrad = ctx.createLinearGradient(0, 0, W, 0);
@@ -1808,20 +1964,23 @@ async function shareStandings() {
     ctx.strokeStyle = divGrad;
     ctx.lineWidth   = 1;
     ctx.beginPath();
-    ctx.moveTo(PAD, 178); ctx.lineTo(W - PAD, 178);
+    ctx.moveTo(PAD, 220); ctx.lineTo(W - PAD, 220);
     ctx.stroke();
 
     // Column headers
-    const colHdrY = 196;
+    const colHdrY = 238;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font         = '20px sans-serif';
+    ctx.font         = '26px sans-serif';
     ctx.fillStyle    = '#5a7080';
     ctx.fillText('🎯', xExact, colHdrY);
     ctx.fillText('✅', xRes,   colHdrY);
     ctx.textAlign = 'right';
-    ctx.font      = 'bold 17px sans-serif';
+    ctx.font      = 'bold 22px sans-serif';
     ctx.fillText('POINTS', xPts, colHdrY);
+
+    // Rank arrows from localStorage snapshot
+    const shareCardPrevRanks = loadPrevRanks();
 
     // Player rows
     rankedUsers.forEach((u, i) => {
@@ -1831,30 +1990,57 @@ async function shareStandings() {
       if (i % 2 === 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.05)';
         ctx.beginPath();
-        ctx.roundRect(PAD - 12, rowY + 3, W - (PAD - 12) * 2, ROW_H - 5, 8);
+        ctx.roundRect(PAD - 14, rowY + 3, W - (PAD - 14) * 2, ROW_H - 6, 10);
         ctx.fill();
       }
 
       // Rank
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font         = 'bold 24px "Bebas Neue", sans-serif';
+      ctx.font         = 'bold 32px "Bebas Neue", sans-serif';
       ctx.fillStyle    = i < 3 ? ['#FFD700','#C0C0C0','#CD7F32'][i] : '#3a5060';
-      ctx.fillText(`${i + 1}`, xRank, midY);
+      ctx.fillText(`${i + 1}`, xRank, midY - 12);
+
+      // Rank movement pill below rank number
+      const prevRankPos = shareCardPrevRanks[u.id];
+      if (prevRankPos != null) {
+        const diff = prevRankPos - (i + 1);
+        if (diff !== 0) {
+          const arrow   = diff > 0 ? `↑${diff}` : `↓${Math.abs(diff)}`;
+          const bgCol   = diff > 0 ? 'rgba(46,204,113,0.22)' : 'rgba(231,76,60,0.22)';
+          const txtCol  = diff > 0 ? '#2ecc71' : '#e74c3c';
+          const pillY   = midY + 10;
+          ctx.font      = 'bold 17px sans-serif';
+          ctx.textAlign = 'center';
+          const tw      = ctx.measureText(arrow).width;
+          const pH = 20, pW = tw + 14, pR = 4;
+          const pX = xRank - pW / 2;
+          const pYt = pillY - pH / 2;
+          // Pill background
+          ctx.fillStyle = bgCol;
+          ctx.beginPath();
+          ctx.roundRect(pX, pYt, pW, pH, pR);
+          ctx.fill();
+          // Pill text
+          ctx.fillStyle   = txtCol;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(arrow, xRank, pillY);
+        }
+      }
 
       // Name
       ctx.textAlign    = 'left';
       ctx.textBaseline = 'middle';
-      ctx.font         = 'bold 32px "Bebas Neue", Arial Narrow, sans-serif';
+      ctx.font         = 'bold 42px "Bebas Neue", Arial Narrow, sans-serif';
       ctx.fillStyle    = '#d8e8f5';
-      const maxLen     = 13;
+      const maxLen     = 16;
       const name       = u.nickname.length > maxLen ? u.nickname.slice(0, maxLen) + '\u2026' : u.nickname;
       ctx.fillText(name, xName, midY);
 
       // Exact
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font         = 'bold 30px "Bebas Neue", sans-serif';
+      ctx.font         = 'bold 40px "Bebas Neue", sans-serif';
       ctx.fillStyle    = '#E8B800';
       ctx.fillText(u.computedExact  || 0, xExact, midY);
 
@@ -1865,7 +2051,7 @@ async function shareStandings() {
       // Points
       ctx.textAlign = 'right';
       ctx.fillStyle = '#f0f4f8';
-      ctx.font      = 'bold 34px "Bebas Neue", sans-serif';
+      ctx.font      = 'bold 46px "Bebas Neue", sans-serif';
       ctx.fillText(u.totalPoints || 0, xPts, midY);
     });
 
@@ -1878,7 +2064,7 @@ async function shareStandings() {
     ctx.stroke();
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font         = '19px sans-serif';
+    ctx.font         = '24px sans-serif';
     ctx.fillStyle    = '#2a3a4a';
     ctx.fillText('kpimdad.github.io/kph-wc26', W / 2, footY + 4);
 
@@ -1947,7 +2133,7 @@ function wireEvents() {
     document.getElementById('register-form').style.display = 'none';
     document.getElementById('login-form').style.display = 'block';
   });
-  document.getElementById('show-register-btn').addEventListener('click', () => {
+  document.getElementById('show-register-btn')?.addEventListener('click', () => {
     document.getElementById('login-form').style.display = 'none';
     document.getElementById('register-form').style.display = 'block';
   });
