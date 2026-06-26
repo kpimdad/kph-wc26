@@ -2069,7 +2069,7 @@ async function shareStandings() {
       ctx.textAlign = 'right';
       ctx.fillStyle = '#f0f4f8';
       ctx.font      = 'bold 46px "Bebas Neue", sans-serif';
-      ctx.fillText(u.totalPoints || 0, xPts, midY);
+      ctx.fillText(u.computedPoints != null ? u.computedPoints : (u.totalPoints || 0), xPts, midY);
     });
 
     // Footer
