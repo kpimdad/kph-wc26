@@ -1896,7 +1896,14 @@ async function shareStandings() {
   try {
     const rankedUsers = [...STATE.users]
       .filter(u => !u.isAdminAccount)
-      .sort(tiebreakSort);
+      .sort((a, b) => {
+        const ap = a.computedPoints != null ? a.computedPoints : (a.totalPoints || 0);
+        const bp = b.computedPoints != null ? b.computedPoints : (b.totalPoints || 0);
+        if (bp !== ap) return bp - ap;
+        if ((b.computedExact||0) !== (a.computedExact||0)) return (b.computedExact||0) - (a.computedExact||0);
+        if ((b.computedWinner||0) !== (a.computedWinner||0)) return (b.computedWinner||0) - (a.computedWinner||0);
+        return (a.predictionsSubmitted||0) - (b.predictionsSubmitted||0);
+      });
 
     const DPR    = 3;
     const W      = 1080;
