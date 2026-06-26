@@ -1,12 +1,7 @@
 name: Fetch WC Results
 
 on:
-  schedule:
-    # Run every 30 min, 16:00–09:00 UTC — covers all WC 2026 kickoff windows + 5h buffer
-    # Public repo: GitHub Actions minutes are free & unlimited
-    # Script exits in ~15s when no matches pending — negligible cost either way
-    - cron: '0,30 13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4,5,6,7,8,9 * * *'
-  workflow_dispatch: # Manual trigger from Actions tab
+  workflow_dispatch: # Manual trigger only — auto-schedule disabled
 
 jobs:
   fetch:
