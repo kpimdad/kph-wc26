@@ -1894,6 +1894,9 @@ async function shareStandings() {
   btn.disabled = true;
 
   try {
+    // Always recompute from live prediction data so share card matches leaderboard exactly
+    await computeUserAccuracy();
+
     const rankedUsers = [...STATE.users]
       .filter(u => !u.isAdminAccount)
       .sort((a, b) => {
