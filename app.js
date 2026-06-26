@@ -822,9 +822,18 @@ async function computeUserAccuracy() {
     u.finishedPreds    = total;
     u.computedExact    = exactMap[u.id]  || 0;
     u.computedWinner   = winnerMap[u.id] || 0;
+    // Compute points from actual prediction data — avoids drift from stored totalPoints
+    u.computedPoints   = (exactMap[u.id] || 0) * 13 + (winnerMap[u.id] || 0) * 10;
     u.exactAccuracy    = total >= 1 ? Math.round(((exactMap[u.id]  || 0) / total) * 100) : null;
     u.resultAccuracy   = total >= 1 ? Math.round(((winnerMap[u.id] || 0) / total) * 100) : null;
     u.accuracy         = total >= 1 ? Math.round(((scored[u.id]    || 0) / total) * 100) : null;
+  });
+  // Re-sort using computed (accurate) points
+  STATE.users.sort((a, b) => {
+    if ((b.computedPoints||0) !== (a.computedPoints||0)) return (b.computedPoints||0) - (a.computedPoints||0);
+    if ((b.computedExact||0) !== (a.computedExact||0))  return (b.computedExact||0)  - (a.computedExact||0);
+    if ((b.computedWinner||0) !== (a.computedWinner||0)) return (b.computedWinner||0) - (a.computedWinner||0);
+    return (a.predictionsSubmitted||0) - (b.predictionsSubmitted||0);
   });
 }
 
@@ -969,7 +978,7 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
   }
 
   const rows = users.map((u, i) => {
-    const pts    = filter ? (u.filteredPoints    || 0) : (u.totalPoints    || 0);
+    const pts    = filter ? (u.filteredPoints    || 0) : (u.computedPoints != null ? u.computedPoints : (u.totalPoints || 0));
     const exact  = filter ? (u.filteredExact     || 0) : (u.computedExact  || 0);
     const winner = filter ? (u.filteredWinner    || 0) : (u.computedWinner || 0);
     const played = filter ? (u.filteredPredCount || 0) : (u.predictionsSubmitted || 0);
