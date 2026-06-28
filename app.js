@@ -236,6 +236,8 @@ async function fetchMatches(force = false) {
   snap.forEach(d => { fs[d.id] = d.data(); });
   STATE.matches = MATCHES.map(m => ({
     ...m,
+    teamA:   (fs[m.matchId]?.teamA && fs[m.matchId].teamA !== 'TBD') ? fs[m.matchId].teamA : m.teamA,
+    teamB:   (fs[m.matchId]?.teamB && fs[m.matchId].teamB !== 'TBD') ? fs[m.matchId].teamB : m.teamB,
     resultA: fs[m.matchId]?.resultA ?? null,
     resultB: fs[m.matchId]?.resultB ?? null,
     status:  fs[m.matchId]?.status  ?? m.status,
