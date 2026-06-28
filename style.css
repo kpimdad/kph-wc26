@@ -784,6 +784,17 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
 }
 
 /* Admin penalty row */
+.pred-pen-pick {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0.2rem 0 0.1rem;
+  letter-spacing: 0.01em;
+}
+.pred-pen-pick.pen-correct { color: var(--grass, #4caf50); }
+.pred-pen-pick.pen-wrong   { color: var(--red,  #e53935); text-decoration: line-through; }
+
 .pen-admin-row {
   display: flex;
   align-items: center;

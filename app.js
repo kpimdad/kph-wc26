@@ -1192,9 +1192,21 @@ function renderMyPredictions() {
 
   function renderPredCard({ m, p }) {
     const pts = p.pointsAwarded;
-    const ptsCls = pts === 13 ? 'exact' : pts === 10 ? 'winner' : pts === 0 ? 'wrong' : 'none';
-    const ptsLabel = pts === 13 ? '+13' : pts === 10 ? '+10' : pts === 0 ? '0' : '–';
+    const ptsCls = pts === 18 || pts === 13 ? 'exact' : pts === 15 || pts === 10 ? 'winner' : pts === 0 ? 'wrong' : 'none';
+    const ptsLabel = pts === 18 ? '+18' : pts === 15 ? '+15' : pts === 13 ? '+13' : pts === 10 ? '+10' : pts === 0 ? '0' : '–';
     const result = m.resultA != null ? `${m.resultA} – ${m.resultB}` : null;
+    // Penalty pick line — show when user picked a penalty winner
+    const penPick = p.penaltyPick;
+    const penTeam = penPick === 'teamA' ? m.teamA : penPick === 'teamB' ? m.teamB : null;
+    const penFlag = penPick === 'teamA' ? getFlag(m.teamA, m.flagA) : penPick === 'teamB' ? getFlag(m.teamB, m.flagB) : null;
+    const penResult = m.penaltyWinner; // set after match if went to pens
+    const penCorrect = penResult && penPick === penResult;
+    const penWrong   = penResult && penPick && penPick !== penResult;
+    const penLine = penTeam
+      ? `<div class="pred-pen-pick${penCorrect ? ' pen-correct' : penWrong ? ' pen-wrong' : ''}">
+           🏆 Pens: ${penFlag} ${penTeam}${penCorrect ? ' ✓' : penWrong ? ' ✗' : ''}
+         </div>`
+      : '';
     return `<div class="pred-fm-card">
       <div class="pred-fm-row">
         <div class="pred-fm-team">
@@ -1213,6 +1225,7 @@ function renderMyPredictions() {
           <span class="pred-fm-name">${m.teamB}</span>
         </div>
       </div>
+      ${penLine}
       <div class="pred-fm-pts ${ptsCls}">${ptsLabel} pts</div>
     </div>`;
   }
