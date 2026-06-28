@@ -742,6 +742,70 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
   margin-bottom: 1.5rem;
 }
 
+/* Penalty picker */
+#penalty-picker {
+  margin: 0.75rem auto 0;
+  max-width: 360px;
+  text-align: center;
+}
+.pen-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+.pen-btns {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.pen-btn {
+  flex: 1;
+  max-width: 150px;
+  padding: 0.55rem 0.5rem;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.pen-btn:hover {
+  border-color: var(--accent);
+}
+.pen-btn-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Admin penalty row */
+.pen-admin-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+}
+.pen-admin-label {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pen-admin-select {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--input-bg, var(--card-bg));
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
 .predict-actions {
   display: flex;
   flex-direction: column;

@@ -23,11 +23,13 @@ admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
 // ── Scoring (mirror of app.js) ────────────────────────────────────────────────
-function calculatePoints(pA, pB, rA, rB) {
-  if (pA === rA && pB === rB) return 13;
+function calculatePoints(pA, pB, rA, rB, penaltyPick = null, penaltyWinner = null) {
   const predWin = pA > pB ? 1 : pA < pB ? -1 : 0;
   const realWin = rA > rB ? 1 : rA < rB ? -1 : 0;
-  return predWin === realWin ? 10 : 0;
+  if (predWin !== realWin) return 0;
+  const baseScore = (pA === rA && pB === rB) ? 13 : 10;
+  const penBonus  = (penaltyWinner && rA === rB && pA === pB && penaltyPick === penaltyWinner) ? 5 : 0;
+  return baseScore + penBonus;
 }
 
 // ── Fetch from football-data.org ──────────────────────────────────────────────
@@ -83,6 +85,13 @@ async function main() {
     const rA = apiMatch.score?.fullTime?.home;
     const rB = apiMatch.score?.fullTime?.away;
     if (rA == null || rB == null) continue;
+    // Penalty winner: score.winner is set when it was a penalty shootout
+    // For penalties, fullTime will be a draw — extraTime may also be a draw
+    // The API sets score.winner = 'HOME_TEAM' or 'AWAY_TEAM' for penalty victories
+    let penaltyWinner = null;
+    if (rA === rB && apiMatch.score?.winner && apiMatch.score.winner !== 'DRAW') {
+      penaltyWinner = apiMatch.score.winner === 'HOME_TEAM' ? 'teamA' : 'teamB';
+    }
 
     const apiTime = new Date(apiMatch.utcDate).getTime();
     const apiHome = norm(apiMatch.homeTeam?.name);
@@ -102,7 +111,7 @@ async function main() {
       console.log(`  ⚠ No local match: ${apiMatch.homeTeam?.name} vs ${apiMatch.awayTeam?.name} @ ${apiMatch.utcDate}`);
       continue;
     }
-    toProcess.push({ ourMatch, rA, rB });
+    toProcess.push({ ourMatch, rA, rB, penaltyWinner });
   }
 
   if (toProcess.length === 0) {
@@ -121,16 +130,22 @@ async function main() {
   const updatedMatches = [];
 
   for (let i = 0; i < toProcess.length; i++) {
-    const { ourMatch, rA, rB } = toProcess[i];
+    const { ourMatch, rA, rB, penaltyWinner } = toProcess[i];
     const current = matchDocs[i].exists ? matchDocs[i].data() : {};
 
-    if (current.resultA === rA && current.resultB === rB && current.status === 'completed') {
+    const alreadyScored = current.resultA === rA && current.resultB === rB &&
+                          current.status === 'completed' &&
+                          (current.penaltyWinner ?? null) === penaltyWinner;
+    if (alreadyScored) {
       console.log(`  — Already scored: ${ourMatch.teamA} ${rA}–${rB} ${ourMatch.teamB}`);
       continue;
     }
 
-    // Write result
-    await matchRefs[i].set({ resultA: rA, resultB: rB, status: 'completed' }, { merge: true });
+    // Write result (include penaltyWinner if set)
+    const matchUpdate = { resultA: rA, resultB: rB, status: 'completed' };
+    if (penaltyWinner) matchUpdate.penaltyWinner = penaltyWinner;
+    await matchRefs[i].set(matchUpdate, { merge: true });
+    if (penaltyWinner) console.log(`    Penalties: ${penaltyWinner} wins`);
 
     // Read predictions for this match
     const predsSnap = await db.collection('predictions')
@@ -139,7 +154,7 @@ async function main() {
     let skipped = 0;
     predsSnap.forEach(doc => {
       const p    = doc.data();
-      const pts  = calculatePoints(p.predictedA, p.predictedB, rA, rB);
+      const pts  = calculatePoints(p.predictedA, p.predictedB, rA, rB, p.penaltyPick ?? null, penaltyWinner);
       const prev = p.pointsAwarded ?? null;
       if (prev === pts) { skipped++; return; }
       predBatchOps.push({ ref: doc.ref, pts });
@@ -148,7 +163,7 @@ async function main() {
     });
     if (skipped > 0) console.log(`    (skipped ${skipped} already-correct predictions)`);
 
-    updatedMatches.push({ ourMatch, rA, rB, count: predsSnap.size });
+    updatedMatches.push({ ourMatch, rA, rB, penaltyWinner, count: predsSnap.size });
   }
 
   // ── Batch-write prediction scores ─────────────────────────────────────────
@@ -179,8 +194,9 @@ async function main() {
   }
 
   // ── Log results ───────────────────────────────────────────────────────────
-  for (const { ourMatch, rA, rB, count } of updatedMatches) {
-    console.log(`  ✅ ${ourMatch.teamA} ${rA}–${rB} ${ourMatch.teamB} · ${count} prediction(s) scored`);
+  for (const { ourMatch, rA, rB, penaltyWinner, count } of updatedMatches) {
+    const penStr = penaltyWinner ? ` (pens: ${penaltyWinner})` : '';
+    console.log(`  ✅ ${ourMatch.teamA} ${rA}–${rB} ${ourMatch.teamB}${penStr} · ${count} prediction(s) scored`);
   }
 
   // ── Write last-sync timestamp ─────────────────────────────────────────────
