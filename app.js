@@ -254,8 +254,16 @@ async function fetchMyPredictions(force = false) {
     collection(STATE.db, 'predictions'),
     where('userId', '==', STATE.session.userId)
   ));
+  // Temporary client-side remap: fixture corrections changed matchId→team assignments.
+  // Apply inverse remap so old prediction docs display under the correct match
+  // until the migrate-r32-preds workflow runs and fixes the Firestore docs.
+  const _R32_REMAP = { m074:'m075', m075:'m076', m076:'m074', m077:'m078', m078:'m077', m081:'m082', m082:'m081', m083:'m084', m084:'m083', m086:'m087', m087:'m088', m088:'m086' };
   STATE.predictions = {};
-  snap.forEach(d => { const p = d.data(); STATE.predictions[p.matchId] = p; });
+  snap.forEach(d => {
+    const p = d.data();
+    const mid = _R32_REMAP[p.matchId] || p.matchId;
+    STATE.predictions[mid] = { ...p, matchId: mid };
+  });
   _predsFetchedAt = Date.now();
 }
 
