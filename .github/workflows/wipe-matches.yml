@@ -1,0 +1,29 @@
+name: Wipe Match Predictions
+
+on:
+  workflow_dispatch:
+    inputs:
+      wipe_ids:
+        description: 'Match IDs to skip entirely (delete predictions + mark skipped), comma-separated e.g. m074,m075,m076'
+        required: false
+        default: ''
+      reset_ids:
+        description: 'Match IDs to reset to upcoming (delete predictions + clear results), comma-separated'
+        required: false
+        default: ''
+
+jobs:
+  wipe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install firebase-admin --prefix scripts
+      - name: Wipe Match Predictions
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          WIPE_IDS: ${{ github.event.inputs.wipe_ids }}
+          RESET_IDS: ${{ github.event.inputs.reset_ids }}
+        run: node scripts/wipe-matches.js
