@@ -551,31 +551,31 @@ const MATCHES = [
   },
   {
     matchId: "m074", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Germany", teamB: "Paraguay", flagA: "🇩🇪", flagB: "🇵🇾",
-    kickoffUTC: "2026-06-29T19:00:00Z", venue: "NRG Stadium, Houston",
+    teamA: "Brazil", teamB: "Japan", flagA: "🇧🇷", flagB: "🇯🇵",
+    kickoffUTC: "2026-06-29T17:00:00Z", venue: "NRG Stadium, Houston",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m075", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Netherlands", teamB: "Morocco", flagA: "🇳🇱", flagB: "🇲🇦",
+    teamA: "Germany", teamB: "Paraguay", flagA: "🇩🇪", flagB: "🇵🇾",
     kickoffUTC: "2026-06-29T20:30:00Z", venue: "Gillette Stadium, Foxborough",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m076", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Brazil", teamB: "Japan", flagA: "🇧🇷", flagB: "🇯🇵",
+    teamA: "Netherlands", teamB: "Morocco", flagA: "🇳🇱", flagB: "🇲🇦",
     kickoffUTC: "2026-06-30T01:00:00Z", venue: "Estadio BBVA, Monterrey",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m077", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "France", teamB: "Sweden", flagA: "🇫🇷", flagB: "🇸🇪",
+    teamA: "Ivory Coast", teamB: "Norway", flagA: "🇨🇮", flagB: "🇳🇴",
     kickoffUTC: "2026-06-30T17:00:00Z", venue: "AT&T Stadium, Arlington",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m078", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Ivory Coast", teamB: "Norway", flagA: "🇨🇮", flagB: "🇳🇴",
+    teamA: "France", teamB: "Sweden", flagA: "🇫🇷", flagB: "🇸🇪",
     kickoffUTC: "2026-06-30T21:00:00Z", venue: "MetLife Stadium, East Rutherford",
     resultA: null, resultB: null, status: "upcoming"
   },
@@ -593,25 +593,25 @@ const MATCHES = [
   },
   {
     matchId: "m081", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "USA", teamB: "Bosnia and Herzegovina", flagA: "🇺🇸", flagB: "🇧🇦",
+    teamA: "Belgium", teamB: "Senegal", flagA: "🇧🇪", flagB: "🇸🇳",
     kickoffUTC: "2026-07-01T20:00:00Z", venue: "Lumen Field, Seattle",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m082", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Belgium", teamB: "Senegal", flagA: "🇧🇪", flagB: "🇸🇳",
-    kickoffUTC: "2026-07-01T20:00:00Z", venue: "Levi's Stadium, Santa Clara",
+    teamA: "USA", teamB: "Bosnia and Herzegovina", flagA: "🇺🇸", flagB: "🇧🇦",
+    kickoffUTC: "2026-07-02T00:00:00Z", venue: "Levi's Stadium, Santa Clara",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m083", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Portugal", teamB: "Croatia", flagA: "🇵🇹", flagB: "🇭🇷",
+    teamA: "Spain", teamB: "Austria", flagA: "🇪🇸", flagB: "🇦🇹",
     kickoffUTC: "2026-07-02T19:00:00Z", venue: "SoFi Stadium, Los Angeles",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m084", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Spain", teamB: "Austria", flagA: "🇪🇸", flagB: "🇦🇹",
+    teamA: "Portugal", teamB: "Croatia", flagA: "🇵🇹", flagB: "🇭🇷",
     kickoffUTC: "2026-07-02T23:00:00Z", venue: "BMO Field, Toronto",
     resultA: null, resultB: null, status: "upcoming"
   },
@@ -623,19 +623,19 @@ const MATCHES = [
   },
   {
     matchId: "m086", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Argentina", teamB: "Cabo Verde", flagA: "🇦🇷", flagB: "🇨🇻",
+    teamA: "Australia", teamB: "Egypt", flagA: "🇦🇺", flagB: "🇪🇬",
     kickoffUTC: "2026-07-03T18:00:00Z", venue: "AT&T Stadium, Arlington",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m087", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Colombia", teamB: "Ghana", flagA: "🇨🇴", flagB: "🇬🇭",
+    teamA: "Argentina", teamB: "Cabo Verde", flagA: "🇦🇷", flagB: "🇨🇻",
     kickoffUTC: "2026-07-03T22:00:00Z", venue: "Hard Rock Stadium, Miami",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m088", matchDay: "Round of 32", stage: "R32", group: null,
-    teamA: "Australia", teamB: "Egypt", flagA: "🇦🇺", flagB: "🇪🇬",
+    teamA: "Colombia", teamB: "Ghana", flagA: "🇨🇴", flagB: "🇬🇭",
     kickoffUTC: "2026-07-04T01:30:00Z", venue: "Arrowhead Stadium, Kansas City",
     resultA: null, resultB: null, status: "upcoming"
   },
