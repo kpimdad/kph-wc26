@@ -1,0 +1,29 @@
+name: Check Player Edit History
+
+on:
+  workflow_dispatch:
+    inputs:
+      nickname:
+        description: 'Player nickname (exact)'
+        required: true
+        default: 'Eranadan MA Rahman'
+      match_id:
+        description: 'Match ID (e.g. m074 for Brazil vs Japan)'
+        required: true
+        default: 'm074'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install firebase-admin
+        working-directory: scripts
+      - name: Check edit history
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          NICKNAME: ${{ github.event.inputs.nickname }}
+          MATCH_ID: ${{ github.event.inputs.match_id }}
+        run: node scripts/check-edit-history.js
