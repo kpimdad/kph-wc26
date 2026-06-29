@@ -243,7 +243,7 @@ async function fetchMatches(force = false) {
     resultA: fs[m.matchId]?.resultA ?? null,
     resultB: fs[m.matchId]?.resultB ?? null,
     status:  fs[m.matchId]?.status  ?? m.status,
-  }));
+  })).filter(m => m.status !== 'skipped');
   _matchesFetchedAt = Date.now();
 }
 
