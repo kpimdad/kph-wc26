@@ -1,23 +1,6 @@
 /**
- * migrate-r32-preds.js
- * 
- * When R32 fixtures were corrected, matchId-to-team assignments changed.
- * Predictions made under the old (wrong) mapping must be remapped so they
- * stay attributed to the same match the user actually predicted for.
- *
- * Old → New matchId remapping (team follows the match, not the slot):
- *   m074 (was Germany/Paraguay)    → m075 (Germany/Paraguay now lives here)
- *   m075 (was Netherlands/Morocco) → m076
- *   m076 (was Brazil/Japan)        → m074
- *   m077 (was France/Sweden)       → m078
- *   m078 (was Ivory Coast/Norway)  → m077
- *   m081 (was USA/Bosnia)          → m082
- *   m082 (was Belgium/Senegal)     → m081
- *   m083 (was Portugal/Croatia)    → m084
- *   m084 (was Spain/Austria)       → m083
- *   m086 (was Argentina/CaboVerde) → m087
- *   m087 (was Colombia/Ghana)      → m088
- *   m088 (was Australia/Egypt)     → m086
+ * migrate-r32-preds.js — remaps R32 prediction docs after fixture correction.
+ * Uses whereIn (max 10 per query) to fetch all affected docs in 2 reads.
  */
 'use strict';
 const admin = require('firebase-admin');
@@ -25,38 +8,36 @@ admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.F
 const db = admin.firestore();
 
 const REMAP = {
-  m074: 'm075',
-  m075: 'm076',
-  m076: 'm074',
-  m077: 'm078',
-  m078: 'm077',
-  m081: 'm082',
-  m082: 'm081',
-  m083: 'm084',
-  m084: 'm083',
-  m086: 'm087',
-  m087: 'm088',
-  m088: 'm086',
+  m074: 'm075', m075: 'm076', m076: 'm074',
+  m077: 'm078', m078: 'm077',
+  m081: 'm082', m082: 'm081',
+  m083: 'm084', m084: 'm083',
+  m086: 'm087', m087: 'm088', m088: 'm086',
 };
-const OLD_IDS = Object.keys(REMAP);
+const OLD_IDS = Object.keys(REMAP); // 12 ids
 
 async function main() {
-  console.log('Reading all R32 predictions that need remapping…');
+  console.log('Fetching affected predictions (2 whereIn queries)…');
 
-  // Read all predictions for affected matchIds in one pass BEFORE any writes
-  const toMigrate = []; // { oldDocId, newDocId, newMatchId, data }
+  const toMigrate = [];
 
-  for (const oldMatchId of OLD_IDS) {
+  // whereIn supports max 10 values — split into two batches
+  const batches = [OLD_IDS.slice(0, 10), OLD_IDS.slice(10)];
+  for (const ids of batches) {
+    if (!ids.length) continue;
     const snap = await db.collection('predictions')
-      .where('matchId', '==', oldMatchId).get();
-    if (snap.empty) { console.log(`  ${oldMatchId}: no predictions`); continue; }
-    const newMatchId = REMAP[oldMatchId];
+      .where('matchId', 'in', ids).get();
     snap.forEach(doc => {
       const data = doc.data();
-      const newDocId = `${data.userId}_${newMatchId}`;
-      toMigrate.push({ oldDocId: doc.id, oldRef: doc.ref, newDocId, newMatchId, data });
+      const newMatchId = REMAP[data.matchId];
+      if (!newMatchId) return;
+      toMigrate.push({
+        oldRef: doc.ref,
+        newRef: db.collection('predictions').doc(`${data.userId}_${newMatchId}`),
+        newMatchId,
+        data,
+      });
     });
-    console.log(`  ${oldMatchId} → ${newMatchId}: ${snap.size} prediction(s) queued`);
   }
 
   if (toMigrate.length === 0) {
@@ -64,23 +45,29 @@ async function main() {
     process.exit(0);
   }
 
-  console.log(`\nMigrating ${toMigrate.length} prediction(s)…`);
+  // Group by old matchId for logging
+  const counts = {};
+  toMigrate.forEach(({ data, newMatchId }) => {
+    const k = `${data.matchId}→${newMatchId}`;
+    counts[k] = (counts[k] || 0) + 1;
+  });
+  Object.entries(counts).forEach(([k, n]) => console.log(`  ${k}: ${n}`));
+  console.log(`Total: ${toMigrate.length} predictions`);
 
-  // Write new docs then delete old ones in batches of 500
-  const CHUNK = 200;
+  // Write new docs + delete old docs in one batch (max 500 ops per batch)
+  const CHUNK = 200; // 200 pairs = 400 ops, well under limit
   for (let i = 0; i < toMigrate.length; i += CHUNK) {
     const chunk = toMigrate.slice(i, i + CHUNK);
     const batch = db.batch();
-    for (const { oldRef, newDocId, newMatchId, data } of chunk) {
-      const newRef = db.collection('predictions').doc(newDocId);
+    for (const { oldRef, newRef, newMatchId, data } of chunk) {
       batch.set(newRef, { ...data, matchId: newMatchId });
       batch.delete(oldRef);
     }
     await batch.commit();
-    console.log(`  Committed chunk ${Math.floor(i/CHUNK)+1}`);
+    console.log(`Committed chunk ${Math.floor(i / CHUNK) + 1} (${chunk.length} pairs)`);
   }
 
-  console.log(`Done — ${toMigrate.length} predictions remapped.`);
+  console.log('Done.');
   process.exit(0);
 }
 
