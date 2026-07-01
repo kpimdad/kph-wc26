@@ -914,14 +914,22 @@ async function openCompareModal(userId, nickname) {
     return;
   }
 
-  const ptsCls   = p => p === 13 ? 'exact' : p === 10 ? 'winner' : p === 0 ? 'wrong' : 'none';
+  const ptsCls   = p => p === 18 || p === 13 ? 'exact' : p === 15 || p === 10 ? 'winner' : p === 0 ? 'wrong' : 'none';
   const ptsLabel = p => p === 18 ? '+18 ⚽🏆' : p === 15 ? '+15 ✓🏆' : p === 13 ? '+13 ⚽' : p === 10 ? '+10 ✓' : p === 0 ? '0 pts' : '–';
 
   body.innerHTML = completed.map(m => {
     const mine   = STATE.predictions[m.matchId];
     const theirs = theirPreds[m.matchId];
+    const penWinner = m.penaltyWinner ?? null;
     const myPts  = mine?.pointsAwarded ?? null;
-    const thPts  = theirs ? calculatePoints(theirs.predictedA, theirs.predictedB, m.resultA, m.resultB) : null;
+    const thPts  = theirs ? calculatePoints(theirs.predictedA, theirs.predictedB, m.resultA, m.resultB, theirs.penaltyPick ?? null, penWinner) : null;
+
+    const penPickLine = (pred, teamA, teamB) => {
+      if (!penWinner || !pred?.penaltyPick) return '';
+      const pickName = pred.penaltyPick === 'teamA' ? teamA : teamB;
+      const correct  = pred.penaltyPick === penWinner;
+      return `<span class="compare-pen-pick ${correct ? 'pen-correct' : 'pen-wrong'}">🏆 ${pickName}</span>`;
+    };
 
     return `<div class="compare-row">
       <div class="compare-match-label">${getFlag(m.teamA, m.flagA)} ${m.teamA} <strong>${m.resultA}–${m.resultB}</strong> ${m.teamB} ${getFlag(m.teamB, m.flagB)}</div>
@@ -929,11 +937,13 @@ async function openCompareModal(userId, nickname) {
         <div class="compare-pick ${ptsCls(myPts)}">
           <span class="compare-who">You</span>
           <span class="compare-score">${mine ? `${mine.predictedA}–${mine.predictedB}` : '–'}</span>
+          ${penPickLine(mine, m.teamA, m.teamB)}
           <span class="compare-pts">${ptsLabel(myPts)}</span>
         </div>
         <div class="compare-pick ${ptsCls(thPts)}">
           <span class="compare-who">${nickname}</span>
           <span class="compare-score">${theirs ? `${theirs.predictedA}–${theirs.predictedB}` : '–'}</span>
+          ${penPickLine(theirs, m.teamA, m.teamB)}
           <span class="compare-pts">${ptsLabel(thPts)}</span>
         </div>
       </div>

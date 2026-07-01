@@ -1170,6 +1170,9 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
 .compare-pick.winner .compare-pts { color: #2ecc71; }
 .compare-pick.wrong  .compare-pts { color: #e74c3c; }
 .compare-pick.none   .compare-pts { color: var(--muted); }
+.compare-pen-pick { font-size: 0.72rem; font-weight: 600; }
+.compare-pen-pick.pen-correct { color: #2ecc71; }
+.compare-pen-pick.pen-wrong   { color: #e74c3c; }
 
 /* ════════════════════════════════════════
    LEADERBOARD VIEW
