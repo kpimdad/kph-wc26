@@ -240,9 +240,10 @@ async function fetchMatches(force = false) {
     ...m,
     teamA:   (fs[m.matchId]?.teamA && fs[m.matchId].teamA !== 'TBD') ? fs[m.matchId].teamA : m.teamA,
     teamB:   (fs[m.matchId]?.teamB && fs[m.matchId].teamB !== 'TBD') ? fs[m.matchId].teamB : m.teamB,
-    resultA: fs[m.matchId]?.resultA ?? null,
-    resultB: fs[m.matchId]?.resultB ?? null,
-    status:  fs[m.matchId]?.status  ?? m.status,
+    resultA:       fs[m.matchId]?.resultA       ?? null,
+    resultB:       fs[m.matchId]?.resultB       ?? null,
+    status:        fs[m.matchId]?.status        ?? m.status,
+    penaltyWinner: fs[m.matchId]?.penaltyWinner ?? null,
   })).filter(m => m.status !== 'skipped');
   _matchesFetchedAt = Date.now();
 }
