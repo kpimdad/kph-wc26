@@ -1068,12 +1068,13 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
       <td class="lb-td-num lb-td-played">${played}</td>
       <td class="lb-td-num lb-td-exact">${exact}</td>
       <td class="lb-td-num lb-td-result">${winner}</td>
-      <td class="lb-td-pts"><span class="lb-pts">${pts}</span>${u.penHits > 0 ? `<span class="lb-pen-badge" title="${u.penHits} penalty bonus${u.penHits > 1 ? 'es' : ''}">🏆×${u.penHits}</span>` : ''}</td>
+      <td class="lb-td-num lb-td-pen">${u.penHits > 0 ? `<span class="lb-pen-hit">🏆 ${u.penHits}</span>` : ''}</td>
+      <td class="lb-td-pts"><span class="lb-pts">${pts}</span></td>
     </tr>`;
 
     // Expandable drawer — shows champion/golden boot picks
     const drawerRow = `<tr class="lb-tr-drawer" data-uid="${u.id}">
-      <td colspan="8">
+      <td colspan="9">
         <div class="lb-drawer">
           <div class="lb-drawer-picks">
             <span class="lb-drawer-pick"><span class="lb-drawer-lbl">🏆 Winner</span>${champ}</span>
@@ -1097,6 +1098,7 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
           <th class="lb-th-num">MP</th>
           <th class="lb-th-num">🎯</th>
           <th class="lb-th-num">✅</th>
+          <th class="lb-th-num" title="Penalty bonus picks">🏆</th>
           <th class="lb-th-pts">Points</th>
         </tr>
       </thead>
