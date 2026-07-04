@@ -847,7 +847,7 @@ function renderDeadlineBanner() {
 
 async function computeUserAccuracy() {
   const snap = await getDocs(collection(STATE.db, 'predictions'));
-  const allPreds = {}, finished = {}, scored = {}, exactMap = {}, winnerMap = {}, ptsMap = {};
+  const allPreds = {}, finished = {}, scored = {}, exactMap = {}, winnerMap = {}, ptsMap = {}, penMap = {};
   snap.forEach(d => {
     const p = d.data();
     allPreds[p.userId] = (allPreds[p.userId] || 0) + 1;
@@ -858,6 +858,8 @@ async function computeUserAccuracy() {
       if (p.pointsAwarded === 13 || p.pointsAwarded === 18) { exactMap[p.userId]  = (exactMap[p.userId]  || 0) + 1; scored[p.userId] = (scored[p.userId] || 0) + 1; }
       // 10 or 15 = correct result only (with or without penalty bonus)
       if (p.pointsAwarded === 10 || p.pointsAwarded === 15) { winnerMap[p.userId] = (winnerMap[p.userId] || 0) + 1; scored[p.userId] = (scored[p.userId] || 0) + 1; }
+      // 18 or 15 = penalty bonus earned
+      if (p.pointsAwarded === 18 || p.pointsAwarded === 15) { penMap[p.userId] = (penMap[p.userId] || 0) + 1; }
     }
   });
   STATE.users.forEach(u => {
@@ -868,6 +870,7 @@ async function computeUserAccuracy() {
     u.computedWinner   = winnerMap[u.id] || 0;
     // Sum actual pointsAwarded — correctly handles penalty bonus (13→18, 10→15)
     u.computedPoints   = ptsMap[u.id] || 0;
+    u.penHits          = penMap[u.id]  || 0;
     u.exactAccuracy    = total >= 1 ? Math.round(((exactMap[u.id]  || 0) / total) * 100) : null;
     u.resultAccuracy   = total >= 1 ? Math.round(((winnerMap[u.id] || 0) / total) * 100) : null;
     u.accuracy         = total >= 1 ? Math.round(((scored[u.id]    || 0) / total) * 100) : null;
@@ -1065,7 +1068,7 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
       <td class="lb-td-num lb-td-played">${played}</td>
       <td class="lb-td-num lb-td-exact">${exact}</td>
       <td class="lb-td-num lb-td-result">${winner}</td>
-      <td class="lb-td-pts"><span class="lb-pts">${pts}</span></td>
+      <td class="lb-td-pts"><span class="lb-pts">${pts}</span>${u.penHits > 0 ? `<span class="lb-pen-badge" title="${u.penHits} penalty bonus${u.penHits > 1 ? 'es' : ''}">🏆×${u.penHits}</span>` : ''}</td>
     </tr>`;
 
     // Expandable drawer — shows champion/golden boot picks

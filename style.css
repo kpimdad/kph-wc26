@@ -1020,6 +1020,15 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
   color: var(--gold);
   line-height: 1;
 }
+.lb-pen-badge {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--gold);
+  opacity: 0.85;
+  line-height: 1;
+  margin-top: 2px;
+}
 
 /* ── Rank movement badges ────────────────────── */
 .lb-rank-move {
