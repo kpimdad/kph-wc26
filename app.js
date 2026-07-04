@@ -1068,7 +1068,7 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
       <td class="lb-td-num lb-td-played">${played}</td>
       <td class="lb-td-num lb-td-exact">${exact}</td>
       <td class="lb-td-num lb-td-result">${winner}</td>
-      <td class="lb-td-num lb-td-pen">${u.penHits > 0 ? `<span class="lb-pen-hit">🏆 ${u.penHits}</span>` : ''}</td>
+      <td class="lb-td-num lb-td-pen">${u.penHits > 0 ? `<span class="lb-pen-hit">🥅 ${u.penHits}</span>` : ''}</td>
       <td class="lb-td-pts"><span class="lb-pts">${pts}</span></td>
     </tr>`;
 
@@ -1098,7 +1098,7 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
           <th class="lb-th-num">MP</th>
           <th class="lb-th-num">🎯</th>
           <th class="lb-th-num">✅</th>
-          <th class="lb-th-num" title="Penalty bonus picks">🏆</th>
+          <th class="lb-th-num" title="Penalty bonus picks">🥅</th>
           <th class="lb-th-pts">Points</th>
         </tr>
       </thead>
