@@ -466,7 +466,7 @@ async function openChampionModal(userData = null) {
 
   if (userData?.championPick)  document.getElementById('champion-select').value  = userData.championPick;
   if (userData?.finalistPick)  document.getElementById('finalist-select').value  = userData.finalistPick;
-  if (userData?.goldenBootPick) document.getElementById('golden-boot-input').value = userData.goldenBootPick;
+  if (userData?.goldenBootPick && !R16_TEAMS.includes(userData.goldenBootPick) && !ALL_TEAMS.includes(userData.goldenBootPick)) document.getElementById('golden-boot-input').value = userData.goldenBootPick;
   if (userData?.potPick)       document.getElementById('pot-input').value         = userData.potPick;
   const semis = userData?.semifinalistPicks || [];
   ['semi-select-1','semi-select-2','semi-select-3','semi-select-4'].forEach((id, i) => {
