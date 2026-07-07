@@ -438,9 +438,10 @@ async function handleRegister() {
 // ═══════════════════════════════════════════════════════
 // CHAMPION / GOLDEN BOOT PICKS
 // ═══════════════════════════════════════════════════════
-// Semi-final picks lock before first QF
-const SEMI_LOCK_UTC = '2026-07-09T19:55:00Z';
-function semisLocked() { return Date.now() >= new Date(SEMI_LOCK_UTC).getTime(); }
+// All picks lock before first QF (July 9 ~20:00 UTC)
+const PICKS_LOCK_UTC = '2026-07-09T19:55:00Z';
+function picksLocked()  { return Date.now() >= new Date(PICKS_LOCK_UTC).getTime(); }
+function semisLocked()  { return picksLocked(); } // alias kept for saveChampionPick
 
 // R16 teams (known qualifiers)
 const R16_TEAMS = [
@@ -473,14 +474,22 @@ async function openChampionModal(userData = null) {
     if (semis[i]) document.getElementById(id).value = semis[i];
   });
 
-  // Lock semi selects if QFs started
-  const locked = semisLocked();
+  // Lock ALL picks once QFs start
+  const locked = picksLocked();
+  ['champion-select','finalist-select'].forEach(id => {
+    document.getElementById(id).disabled = locked;
+  });
+  ['golden-boot-input','pot-input'].forEach(id => {
+    document.getElementById(id).readOnly = locked;
+  });
   ['semi-select-1','semi-select-2','semi-select-3','semi-select-4'].forEach(id => {
     document.getElementById(id).disabled = locked;
   });
   if (locked) {
-    document.querySelector('.semi-grid').insertAdjacentHTML('afterend',
-      '<p style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem">🔒 Semi-finalist picks are locked (QFs started)</p>'
+    document.getElementById('save-champion-btn').disabled = true;
+    document.getElementById('save-champion-btn').textContent = '🔒 Picks Locked';
+    document.querySelector('#champion-modal .modal-box').insertAdjacentHTML('afterbegin',
+      '<p style="font-size:0.8rem;font-weight:700;color:var(--gold);text-align:center;margin-bottom:0.75rem">🔒 All picks are locked — Quarter-Finals started</p>'
     );
   }
 
@@ -2020,7 +2029,7 @@ async function initApp() {
     const uSnap = await getDoc(doc(STATE.db, 'users', session.userId));
     if (uSnap.exists()) {
       const data = uSnap.data();
-      if (!data.championPick || !data.finalistPick) {
+      if (!data.championPick || !data.finalistPick || !data.potPick) {
         setTimeout(() => openChampionModal(data), 900);
       }
     }
