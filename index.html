@@ -472,23 +472,42 @@
       <button id="close-champion-btn" style="background:none;border:none;color:var(--muted);font-size:1.6rem;cursor:pointer;line-height:1;padding:0.25rem;border-radius:50%;transition:color 0.15s" aria-label="Close">×</button>
     </div>
     <p style="color:var(--silver);font-size:0.875rem;margin-bottom:1.5rem">
-      Pick your champion (+50 pts) and the team the Golden Boot winner plays for (+25 pts) — awarded at the end of the tournament!
+      Make your tournament picks — awarded at the end of the tournament!
     </p>
 
     <div class="pick-section">
-      <label class="form-label">🏆 Tournament Winner</label>
+      <label class="form-label">🏆 Tournament Winner <span class="pick-pts">+50 pts</span></label>
       <select id="champion-select" class="form-select"></select>
     </div>
 
-    <div class="pick-section" style="margin-top:1rem">
-      <label class="form-label">⚽ Golden Boot — Top Scorer's Team</label>
-      <select id="golden-boot-select" class="form-select"></select>
+    <div class="pick-section">
+      <label class="form-label">🥈 Runner-up / Finalist <span class="pick-pts">+25 pts</span></label>
+      <select id="finalist-select" class="form-select"></select>
     </div>
 
-    <!-- Photo update -->
+    <div class="pick-section">
+      <label class="form-label">⚽ Golden Boot — Player Name <span class="pick-pts">+40 pts</span></label>
+      <input id="golden-boot-input" class="form-input" type="text" placeholder="e.g. Lionel Messi" autocomplete="off" />
+    </div>
+
+    <div class="pick-section">
+      <label class="form-label">🌟 Player of the Tournament <span class="pick-pts">+35 pts</span></label>
+      <input id="pot-input" class="form-input" type="text" placeholder="e.g. Kylian Mbappé" autocomplete="off" />
+    </div>
+
+    <div class="pick-section">
+      <label class="form-label">4️⃣ All 4 Semi-finalists <span class="pick-pts">+10 pts each · locks before QF</span></label>
+      <div class="semi-grid">
+        <select id="semi-select-1" class="form-select"></select>
+        <select id="semi-select-2" class="form-select"></select>
+        <select id="semi-select-3" class="form-select"></select>
+        <select id="semi-select-4" class="form-select"></select>
+      </div>
+    </div>
+
     <div style="display:flex;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap">
-      <button id="save-champion-btn" class="btn btn-primary" style="flex:1">Save My Picks</button>
-      <button id="skip-champion-btn" class="btn btn-secondary" style="flex:1">Skip for now</button>
+      <button id="save-champion-btn" class="btn btn-primary" style="flex:1">💾 Save My Picks</button>
+      <button id="skip-champion-btn" class="btn btn-secondary" style="flex:1">Close</button>
     </div>
   </div>
 </div>

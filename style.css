@@ -1665,7 +1665,10 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
   from { opacity: 0; transform: translateY(16px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.pick-section { display: flex; flex-direction: column; gap: 0.4rem; }
+.pick-section { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 1rem; }
+.pick-section:first-of-type { margin-top: 0; }
+.pick-pts { font-size: 0.7rem; font-weight: 600; color: var(--gold); margin-left: 0.4rem; opacity: 0.85; }
+.semi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 
 /* ════════════════════════════════════════
    SKELETON LOADING

@@ -438,44 +438,85 @@ async function handleRegister() {
 // ═══════════════════════════════════════════════════════
 // CHAMPION / GOLDEN BOOT PICKS
 // ═══════════════════════════════════════════════════════
+// Semi-final picks lock before first QF
+const SEMI_LOCK_UTC = '2026-07-09T19:55:00Z';
+function semisLocked() { return Date.now() >= new Date(SEMI_LOCK_UTC).getTime(); }
+
+// R16 teams (known qualifiers)
+const R16_TEAMS = [
+  'Canada','Morocco','Paraguay','France','Brazil','Norway',
+  'Mexico','England','Portugal','Spain','USA','Belgium',
+  'Argentina','Egypt','Switzerland','Colombia'
+];
+
 function populateTeamSelects() {
-  const opts = ALL_TEAMS.map(t => `<option value="${t}">${t}</option>`).join('');
-  const blank = '<option value="">— Pick a team —</option>';
-  document.getElementById('champion-select').innerHTML    = blank + opts;
-  document.getElementById('golden-boot-select').innerHTML = blank + opts;
+  const allOpts  = ALL_TEAMS.map(t => `<option value="${t}">${t}</option>`).join('');
+  const r16Opts  = R16_TEAMS.map(t => `<option value="${t}">${t}</option>`).join('');
+  const blank    = '<option value="">— Pick a team —</option>';
+  document.getElementById('champion-select').innerHTML  = blank + allOpts;
+  document.getElementById('finalist-select').innerHTML  = blank + allOpts;
+  ['semi-select-1','semi-select-2','semi-select-3','semi-select-4'].forEach(id => {
+    document.getElementById(id).innerHTML = blank + r16Opts;
+  });
 }
 
 async function openChampionModal(userData = null) {
   if (STATE.session?.isAdmin) return;
   populateTeamSelects();
-  if (userData?.championPick)   document.getElementById('champion-select').value    = userData.championPick;
-  if (userData?.goldenBootPick) document.getElementById('golden-boot-select').value = userData.goldenBootPick;
 
-  const hasPicks = userData?.championPick && userData?.goldenBootPick;
-  document.getElementById('skip-champion-btn').textContent = hasPicks ? 'Close' : 'Skip for now';
+  if (userData?.championPick)  document.getElementById('champion-select').value  = userData.championPick;
+  if (userData?.finalistPick)  document.getElementById('finalist-select').value  = userData.finalistPick;
+  if (userData?.goldenBootPick) document.getElementById('golden-boot-input').value = userData.goldenBootPick;
+  if (userData?.potPick)       document.getElementById('pot-input').value         = userData.potPick;
+  const semis = userData?.semifinalistPicks || [];
+  ['semi-select-1','semi-select-2','semi-select-3','semi-select-4'].forEach((id, i) => {
+    if (semis[i]) document.getElementById(id).value = semis[i];
+  });
+
+  // Lock semi selects if QFs started
+  const locked = semisLocked();
+  ['semi-select-1','semi-select-2','semi-select-3','semi-select-4'].forEach(id => {
+    document.getElementById(id).disabled = locked;
+  });
+  if (locked) {
+    document.querySelector('.semi-grid').insertAdjacentHTML('afterend',
+      '<p style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem">🔒 Semi-finalist picks are locked (QFs started)</p>'
+    );
+  }
 
   document.getElementById('champion-modal').style.display = 'flex';
 }
 
 async function saveChampionPick() {
   if (STATE.session?.isAdmin) return;
-  const champion   = document.getElementById('champion-select').value;
-  const goldenBoot = document.getElementById('golden-boot-select').value;
-  if (!champion || !goldenBoot) { showToast('Pick both a champion and a top-scorer team', 'error'); return; }
+  const champion  = document.getElementById('champion-select').value;
+  const finalist  = document.getElementById('finalist-select').value;
+  const goldenBoot = document.getElementById('golden-boot-input').value.trim();
+  const pot       = document.getElementById('pot-input').value.trim();
+  const semis     = ['semi-select-1','semi-select-2','semi-select-3','semi-select-4']
+                      .map(id => document.getElementById(id).value)
+                      .filter(Boolean);
+
+  if (!champion || !finalist) { showToast('Pick a winner and a runner-up', 'error'); return; }
+  if (champion === finalist)  { showToast('Winner and runner-up can\'t be the same team', 'error'); return; }
   if (!STATE.session?.userId) { showToast('Not logged in', 'error'); return; }
+
   const btn = document.getElementById('save-champion-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
 
+  const payload = { championPick: champion, finalistPick: finalist, goldenBootPick: goldenBoot, potPick: pot };
+  if (!semisLocked()) payload.semifinalistPicks = semis;
+
   try {
-    await setDoc(doc(STATE.db, 'users', STATE.session.userId), { championPick: champion, goldenBootPick: goldenBoot }, { merge: true });
-    showToast(`🏆 ${champion} to win · ⚽ ${goldenBoot} top scorer!`, 'success');
+    await setDoc(doc(STATE.db, 'users', STATE.session.userId), payload, { merge: true });
+    showToast('Picks saved! 🏆', 'success');
     document.getElementById('champion-modal').style.display = 'none';
   } catch (e) {
     const msg = e?.code || e?.message || String(e);
     showToast(`Save failed: ${msg}`, 'error');
     console.error('saveChampionPick error:', e);
   }
-  btn.disabled = false; btn.textContent = 'Save My Picks';
+  btn.disabled = false; btn.textContent = '💾 Save My Picks';
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1052,8 +1093,11 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
       else               moveHTML = `<div class="lb-rank-move same">–</div>`;
     }
 
-    const champ = u.championPick  || '–';
-    const boot  = u.goldenBootPick || '–';
+    const champ    = u.championPick       || '–';
+    const finalist = u.finalistPick      || '–';
+    const boot     = u.goldenBootPick    || '–';
+    const pot      = u.potPick           || '–';
+    const semis    = (u.semifinalistPicks || []).filter(Boolean);
 
     const mainRow = `<tr class="lb-tr ${isMe ? 'lb-me' : ''} ${rankCls}" data-uid="${u.id}" data-nickname="${u.nickname}">
       <td class="lb-td-rank"><div class="lb-rank-num">${rankNum}</div>${moveHTML}</td>
@@ -1078,7 +1122,10 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
         <div class="lb-drawer">
           <div class="lb-drawer-picks">
             <span class="lb-drawer-pick"><span class="lb-drawer-lbl">🏆 Winner</span>${champ}</span>
-            <span class="lb-drawer-pick"><span class="lb-drawer-lbl">⚽ Top Scorer</span>${boot}</span>
+            <span class="lb-drawer-pick"><span class="lb-drawer-lbl">🥈 Runner-up</span>${finalist}</span>
+            <span class="lb-drawer-pick"><span class="lb-drawer-lbl">⚽ Golden Boot</span>${boot || '–'}</span>
+            <span class="lb-drawer-pick"><span class="lb-drawer-lbl">🌟 Player of Tour.</span>${pot}</span>
+            ${semis.length ? `<span class="lb-drawer-pick" style="flex-basis:100%"><span class="lb-drawer-lbl">4️⃣ Semis</span>${semis.join(' · ')}</span>` : ''}
           </div>
         </div>
       </td>
@@ -1973,7 +2020,7 @@ async function initApp() {
     const uSnap = await getDoc(doc(STATE.db, 'users', session.userId));
     if (uSnap.exists()) {
       const data = uSnap.data();
-      if (!data.championPick || !data.goldenBootPick) {
+      if (!data.championPick || !data.finalistPick) {
         setTimeout(() => openChampionModal(data), 900);
       }
     }
