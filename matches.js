@@ -646,49 +646,49 @@ const MATCHES = [
 
   {
     matchId: "m089", matchDay: "Round of 16", stage: "R16", group: null,
-    teamA: "Canada", teamB: "Morocco", flagA: "🇨🇦", flagB: "🇲🇦",
+    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
     kickoffUTC: "2026-07-04T17:00:00Z", venue: "NRG Stadium, Houston",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m090", matchDay: "Round of 16", stage: "R16", group: null,
-    teamA: "Paraguay", teamB: "France", flagA: "🇵🇾", flagB: "🇫🇷",
+    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
     kickoffUTC: "2026-07-04T21:00:00Z", venue: "Lincoln Financial Field, Philadelphia",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m091", matchDay: "Round of 16", stage: "R16", group: null,
-    teamA: "Brazil", teamB: "Norway", flagA: "🇧🇷", flagB: "🇳🇴",
+    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
     kickoffUTC: "2026-07-05T20:00:00Z", venue: "MetLife Stadium, East Rutherford",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m092", matchDay: "Round of 16", stage: "R16", group: null,
-    teamA: "Mexico", teamB: "England", flagA: "🇲🇽", flagB: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
     kickoffUTC: "2026-07-06T00:00:00Z", venue: "Estadio Azteca, Mexico City",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m093", matchDay: "Round of 16", stage: "R16", group: null,
-    teamA: "Portugal", teamB: "Spain", flagA: "🇵🇹", flagB: "🇪🇸",
+    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
     kickoffUTC: "2026-07-06T19:00:00Z", venue: "AT&T Stadium, Arlington",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m094", matchDay: "Round of 16", stage: "R16", group: null,
-    teamA: "USA", teamB: "Belgium", flagA: "🇺🇸", flagB: "🇧🇪",
+    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
     kickoffUTC: "2026-07-07T00:00:00Z", venue: "Lumen Field, Seattle",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m095", matchDay: "Round of 16", stage: "R16", group: null,
-    teamA: "Argentina", teamB: "Egypt", flagA: "🇦🇷", flagB: "🇪🇬",
+    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
     kickoffUTC: "2026-07-07T16:00:00Z", venue: "Mercedes-Benz Stadium, Atlanta",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m096", matchDay: "Round of 16", stage: "R16", group: null,
-    teamA: "Switzerland", teamB: "Colombia", flagA: "🇨🇭", flagB: "🇨🇴",
+    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
     kickoffUTC: "2026-07-07T20:00:00Z", venue: "BC Place, Vancouver",
     resultA: null, resultB: null, status: "upcoming"
   },
@@ -699,25 +699,25 @@ const MATCHES = [
 
   {
     matchId: "m097", matchDay: "Quarter-Final", stage: "QF", group: null,
-    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
+    teamA: "France", teamB: "Morocco", flagA: "🇫🇷", flagB: "🇲🇦",
     kickoffUTC: "2026-07-09T20:00:00Z", venue: "Gillette Stadium, Foxborough",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m098", matchDay: "Quarter-Final", stage: "QF", group: null,
-    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
+    teamA: "Spain", teamB: "Belgium", flagA: "🇪🇸", flagB: "🇧🇪",
     kickoffUTC: "2026-07-10T19:00:00Z", venue: "SoFi Stadium, Los Angeles",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m099", matchDay: "Quarter-Final", stage: "QF", group: null,
-    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
-    kickoffUTC: "2026-07-11T20:00:00Z", venue: "Hard Rock Stadium, Miami",
+    teamA: "Norway", teamB: "England", flagA: "🇳🇴", flagB: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    kickoffUTC: "2026-07-11T21:00:00Z", venue: "Hard Rock Stadium, Miami",
     resultA: null, resultB: null, status: "upcoming"
   },
   {
     matchId: "m100", matchDay: "Quarter-Final", stage: "QF", group: null,
-    teamA: "TBD", teamB: "TBD", flagA: "🏳", flagB: "🏳",
+    teamA: "Argentina", teamB: "Switzerland", flagA: "🇦🇷", flagB: "🇨🇭",
     kickoffUTC: "2026-07-12T01:00:00Z", venue: "Arrowhead Stadium, Kansas City",
     resultA: null, resultB: null, status: "upcoming"
   },
