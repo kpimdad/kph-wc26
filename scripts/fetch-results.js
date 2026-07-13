@@ -23,13 +23,15 @@ admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
 // ── Scoring (mirror of app.js) ────────────────────────────────────────────────
-function calculatePoints(pA, pB, rA, rB, penaltyPick = null, penaltyWinner = null) {
+// SF + 3RD: exact 20, correct 13, pen +5 | FINAL: exact 25, correct 15, pen +10
+function calculatePoints(pA, pB, rA, rB, stage = '') {
   const predWin = pA > pB ? 1 : pA < pB ? -1 : 0;
   const realWin = rA > rB ? 1 : rA < rB ? -1 : 0;
   if (predWin !== realWin) return 0;
-  const baseScore = (pA === rA && pB === rB) ? 13 : 10;
-  const penBonus  = (penaltyWinner && rA === rB && pA === pB && penaltyPick === penaltyWinner) ? 5 : 0;
-  return baseScore + penBonus;
+  const isFinal = stage === 'FINAL';
+  const isSF3rd = stage === 'SF' || stage === '3RD';
+  if (pA === rA && pB === rB) return isFinal ? 25 : isSF3rd ? 20 : 13;
+  return isFinal ? 15 : isSF3rd ? 13 : 10;
 }
 
 // ── Fetch from football-data.org ──────────────────────────────────────────────
@@ -85,13 +87,6 @@ async function main() {
     const rA = apiMatch.score?.fullTime?.home;
     const rB = apiMatch.score?.fullTime?.away;
     if (rA == null || rB == null) continue;
-    // Penalty winner: score.winner is set when it was a penalty shootout
-    // For penalties, fullTime will be a draw — extraTime may also be a draw
-    // The API sets score.winner = 'HOME_TEAM' or 'AWAY_TEAM' for penalty victories
-    let penaltyWinner = null;
-    if (rA === rB && apiMatch.score?.winner && apiMatch.score.winner !== 'DRAW') {
-      penaltyWinner = apiMatch.score.winner === 'HOME_TEAM' ? 'teamA' : 'teamB';
-    }
 
     const apiTime = new Date(apiMatch.utcDate).getTime();
     const apiHome = norm(apiMatch.homeTeam?.name);
@@ -111,7 +106,7 @@ async function main() {
       console.log(`  ⚠ No local match: ${apiMatch.homeTeam?.name} vs ${apiMatch.awayTeam?.name} @ ${apiMatch.utcDate}`);
       continue;
     }
-    toProcess.push({ ourMatch, rA, rB, penaltyWinner });
+    toProcess.push({ ourMatch, rA, rB });
   }
 
   if (toProcess.length === 0) {
@@ -130,22 +125,16 @@ async function main() {
   const updatedMatches = [];
 
   for (let i = 0; i < toProcess.length; i++) {
-    const { ourMatch, rA, rB, penaltyWinner } = toProcess[i];
+    const { ourMatch, rA, rB } = toProcess[i];
     const current = matchDocs[i].exists ? matchDocs[i].data() : {};
 
-    const alreadyScored = current.resultA === rA && current.resultB === rB &&
-                          current.status === 'completed' &&
-                          (current.penaltyWinner ?? null) === penaltyWinner;
-    if (alreadyScored) {
+    if (current.resultA === rA && current.resultB === rB && current.status === 'completed') {
       console.log(`  — Already scored: ${ourMatch.teamA} ${rA}–${rB} ${ourMatch.teamB}`);
       continue;
     }
 
-    // Write result (include penaltyWinner if set)
-    const matchUpdate = { resultA: rA, resultB: rB, status: 'completed' };
-    if (penaltyWinner) matchUpdate.penaltyWinner = penaltyWinner;
-    await matchRefs[i].set(matchUpdate, { merge: true });
-    if (penaltyWinner) console.log(`    Penalties: ${penaltyWinner} wins`);
+    // Write result
+    await matchRefs[i].set({ resultA: rA, resultB: rB, status: 'completed' }, { merge: true });
 
     // Read predictions for this match
     const predsSnap = await db.collection('predictions')
@@ -154,7 +143,7 @@ async function main() {
     let skipped = 0;
     predsSnap.forEach(doc => {
       const p    = doc.data();
-      const pts  = calculatePoints(p.predictedA, p.predictedB, rA, rB, p.penaltyPick ?? null, penaltyWinner);
+      const pts  = calculatePoints(p.predictedA, p.predictedB, rA, rB, ourMatch.stage);
       const prev = p.pointsAwarded ?? null;
       if (prev === pts) { skipped++; return; }
       predBatchOps.push({ ref: doc.ref, pts });
@@ -163,7 +152,7 @@ async function main() {
     });
     if (skipped > 0) console.log(`    (skipped ${skipped} already-correct predictions)`);
 
-    updatedMatches.push({ ourMatch, rA, rB, penaltyWinner, count: predsSnap.size });
+    updatedMatches.push({ ourMatch, rA, rB, count: predsSnap.size });
   }
 
   // ── Batch-write prediction scores ─────────────────────────────────────────
@@ -194,9 +183,8 @@ async function main() {
   }
 
   // ── Log results ───────────────────────────────────────────────────────────
-  for (const { ourMatch, rA, rB, penaltyWinner, count } of updatedMatches) {
-    const penStr = penaltyWinner ? ` (pens: ${penaltyWinner})` : '';
-    console.log(`  ✅ ${ourMatch.teamA} ${rA}–${rB} ${ourMatch.teamB}${penStr} · ${count} prediction(s) scored`);
+  for (const { ourMatch, rA, rB, count } of updatedMatches) {
+    console.log(`  ✅ ${ourMatch.teamA} ${rA}–${rB} ${ourMatch.teamB} · ${count} prediction(s) scored`);
   }
 
   // ── Write last-sync timestamp ─────────────────────────────────────────────

@@ -209,11 +209,15 @@ function getAvatarHTML(user, size = 36) {
 }
 
 // ── Scoring ────────────────────────────────────────────
-function calculatePoints(pA, pB, rA, rB, penaltyPick = null, penaltyWinner = null) {
+function calculatePoints(pA, pB, rA, rB, penaltyPick = null, penaltyWinner = null, stage = '') {
   if (Math.sign(pA - pB) !== Math.sign(rA - rB)) return 0;   // wrong result
-  const baseScore = (pA === rA && pB === rB) ? 13 : 10;       // exact = 13, correct = 10
-  // Penalty bonus: +5 if match went to penalties, it was a draw, user predicted a draw, and picked the right winner
-  const penBonus = (penaltyWinner && rA === rB && pA === pB && penaltyPick === penaltyWinner) ? 5 : 0;
+  const isFinal  = stage === 'FINAL';
+  const isSF3rd  = stage === 'SF' || stage === '3RD';
+  const exactPts   = isFinal ? 25 : isSF3rd ? 20 : 13;
+  const correctPts = isFinal ? 15 : isSF3rd ? 13 : 10;
+  const penAmt     = isFinal ? 10 : 5;
+  const baseScore  = (pA === rA && pB === rB) ? exactPts : correctPts;
+  const penBonus   = (penaltyWinner && rA === rB && pA === pB && penaltyPick === penaltyWinner) ? penAmt : 0;
   return baseScore + penBonus;
 }
 
@@ -438,9 +442,11 @@ async function handleRegister() {
 // ═══════════════════════════════════════════════════════
 // CHAMPION / GOLDEN BOOT PICKS
 // ═══════════════════════════════════════════════════════
-// All picks lock before first QF (July 9 ~20:00 UTC)
-const PICKS_LOCK_UTC = '2026-07-09T19:55:00Z';
+// Pick lock times
+const PICKS_LOCK_UTC  = '2026-07-09T19:55:00Z'; // semis / golden boot / POT lock at first QF
+const FINALS_LOCK_UTC = '2026-07-14T19:00:00Z'; // champion + finalist lock at first SF
 function picksLocked()  { return Date.now() >= new Date(PICKS_LOCK_UTC).getTime(); }
+function finalsLocked() { return Date.now() >= new Date(FINALS_LOCK_UTC).getTime(); }
 function semisLocked()  { return picksLocked(); } // alias kept for saveChampionPick
 
 // R16 teams (known qualifiers)
@@ -474,22 +480,29 @@ async function openChampionModal(userData = null) {
     if (semis[i]) document.getElementById(id).value = semis[i];
   });
 
-  // Lock ALL picks once QFs start
-  const locked = picksLocked();
+  // Lock picks in two stages
+  const qfLocked  = picksLocked();   // semis / golden boot / POT locked at QF
+  const sfLocked  = finalsLocked();  // champion + finalist locked at SF
+
   ['champion-select','finalist-select'].forEach(id => {
-    document.getElementById(id).disabled = locked;
+    document.getElementById(id).disabled = sfLocked;
   });
   ['golden-boot-input','pot-input'].forEach(id => {
-    document.getElementById(id).readOnly = locked;
+    document.getElementById(id).readOnly = qfLocked;
   });
   ['semi-select-1','semi-select-2','semi-select-3','semi-select-4'].forEach(id => {
-    document.getElementById(id).disabled = locked;
+    document.getElementById(id).disabled = qfLocked;
   });
-  if (locked) {
+
+  if (sfLocked) {
     document.getElementById('save-champion-btn').disabled = true;
-    document.getElementById('save-champion-btn').textContent = '🔒 Picks Locked';
+    document.getElementById('save-champion-btn').textContent = '🔒 All Picks Locked';
     document.querySelector('#champion-modal .modal-box').insertAdjacentHTML('afterbegin',
-      '<p style="font-size:0.8rem;font-weight:700;color:var(--gold);text-align:center;margin-bottom:0.75rem">🔒 All picks are locked — Quarter-Finals started</p>'
+      '<p style="font-size:0.8rem;font-weight:700;color:var(--gold);text-align:center;margin-bottom:0.75rem">🔒 All picks locked — Semi-Finals started</p>'
+    );
+  } else if (qfLocked) {
+    document.querySelector('#champion-modal .modal-box').insertAdjacentHTML('afterbegin',
+      '<p style="font-size:0.8rem;color:var(--muted);text-align:center;margin-bottom:0.75rem">🔒 Semi-finalist, Golden Boot & POT picks are locked — you can still update your champion & runner-up</p>'
     );
   }
 
@@ -498,13 +511,10 @@ async function openChampionModal(userData = null) {
 
 async function saveChampionPick() {
   if (STATE.session?.isAdmin) return;
+  if (finalsLocked()) { showToast('All picks are locked', 'error'); return; }
+
   const champion  = document.getElementById('champion-select').value;
   const finalist  = document.getElementById('finalist-select').value;
-  const goldenBoot = document.getElementById('golden-boot-input').value.trim();
-  const pot       = document.getElementById('pot-input').value.trim();
-  const semis     = ['semi-select-1','semi-select-2','semi-select-3','semi-select-4']
-                      .map(id => document.getElementById(id).value)
-                      .filter(Boolean);
 
   if (!champion || !finalist) { showToast('Pick a winner and a runner-up', 'error'); return; }
   if (champion === finalist)  { showToast('Winner and runner-up can\'t be the same team', 'error'); return; }
@@ -513,8 +523,15 @@ async function saveChampionPick() {
   const btn = document.getElementById('save-champion-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
 
-  const payload = { championPick: champion, finalistPick: finalist, goldenBootPick: goldenBoot, potPick: pot };
-  if (!semisLocked()) payload.semifinalistPicks = semis;
+  // Always save champion + finalist (open until SF)
+  const payload = { championPick: champion, finalistPick: finalist };
+  // Only save goldenBoot / POT / semis if QFs haven't started yet
+  if (!picksLocked()) {
+    payload.goldenBootPick    = document.getElementById('golden-boot-input').value.trim();
+    payload.potPick           = document.getElementById('pot-input').value.trim();
+    payload.semifinalistPicks = ['semi-select-1','semi-select-2','semi-select-3','semi-select-4']
+                                  .map(id => document.getElementById(id).value).filter(Boolean);
+  }
 
   try {
     await setDoc(doc(STATE.db, 'users', STATE.session.userId), payload, { merge: true });
@@ -650,11 +667,12 @@ function renderMatchCard(m) {
   let pickStrip = '';
   if (completed) {
     const pts = pred?.pointsAwarded;
+    const isExact  = pred && pred.predictedA === m.resultA && pred.predictedB === m.resultB;
     const ptsBadge =
-      pts === 13 ? `<span class="fm-pts exact">+13 pts ⚽</span>` :
-      pts === 10 ? `<span class="fm-pts winner">+10 pts ✓</span>` :
-      pts === 0  ? `<span class="fm-pts wrong">0 pts</span>`      :
-      !pred      ? `<span class="fm-pts none">No pick</span>`     : '';
+      pts > 0 && isExact  ? `<span class="fm-pts exact">+${pts} pts ⚽</span>`  :
+      pts > 0 && !isExact ? `<span class="fm-pts winner">+${pts} pts ✓</span>` :
+      pts === 0            ? `<span class="fm-pts wrong">0 pts</span>`           :
+      !pred                ? `<span class="fm-pts none">No pick</span>`          : '';
     pickStrip = `<div class="fm-pick-strip">
       ${pred ? `<span class="fm-pick-label">Your pick</span><span class="fm-pick-score">${pred.predictedA}–${pred.predictedB}</span>` : '<span class="fm-pick-label text-muted">No pick made</span>'}
       ${ptsBadge}
@@ -976,7 +994,7 @@ async function openCompareModal(userId, nickname) {
     const theirs = theirPreds[m.matchId];
     const penWinner = m.penaltyWinner ?? null;
     const myPts  = mine?.pointsAwarded ?? null;
-    const thPts  = theirs ? calculatePoints(theirs.predictedA, theirs.predictedB, m.resultA, m.resultB, theirs.penaltyPick ?? null, penWinner) : null;
+    const thPts  = theirs ? calculatePoints(theirs.predictedA, theirs.predictedB, m.resultA, m.resultB, theirs.penaltyPick ?? null, penWinner, m.stage) : null;
 
     const penPickLine = (pred, teamA, teamB) => {
       if (!penWinner || !pred?.penaltyPick) return '';
@@ -1603,9 +1621,9 @@ async function saveMatchResult(matchId, autoRA, autoRB, autoPenaltyWinner) {
     const deltas = {};
     pSnap.forEach(d => {
       const p = d.data();
-      const pts = calculatePoints(p.predictedA, p.predictedB, rA, rB, p.penaltyPick ?? null, penaltyWinner);
+      const pts = calculatePoints(p.predictedA, p.predictedB, rA, rB, p.penaltyPick ?? null, penaltyWinner, m?.stage);
       batch.update(d.ref, { pointsAwarded: pts });
-      total++; if (pts === 13 || pts === 18) exact++; if (pts === 10 || pts === 15) correct++;
+      total++; if (p.predictedA === rA && p.predictedB === rB) exact++; else if (pts > 0) correct++;
       deltas[p.userId] = (deltas[p.userId] || 0) + (pts - (p.pointsAwarded ?? 0));
     });
     await batch.commit();
@@ -1748,7 +1766,7 @@ async function saveAllBackdatePredictions() {
       if (!m) continue;
       const predId = `${userId}_${matchId}`;
       const pA = scores.a, pB = scores.b;
-      const pts = m.resultA != null ? calculatePoints(pA, pB, m.resultA, m.resultB) : null;
+      const pts = m.resultA != null ? calculatePoints(pA, pB, m.resultA, m.resultB, null, null, m.stage) : null;
 
       const existingSnap = await getDoc(doc(STATE.db, 'predictions', predId));
       const oldPts = existingSnap.exists() ? (existingSnap.data().pointsAwarded ?? 0) : 0;
@@ -1835,7 +1853,7 @@ async function rescoreAllMatches() {
       const batch = writeBatch(STATE.db);
       pSnap.forEach(d => {
         const p = d.data();
-        const pts = calculatePoints(p.predictedA, p.predictedB, m.resultA, m.resultB, p.penaltyPick ?? null, penWinner);
+        const pts = calculatePoints(p.predictedA, p.predictedB, m.resultA, m.resultB, p.penaltyPick ?? null, penWinner, m.stage);
         batch.update(d.ref, { pointsAwarded: pts });
         predCount++;
       });
