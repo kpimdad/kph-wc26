@@ -248,6 +248,7 @@ async function fetchMatches(force = false) {
     resultB:       fs[m.matchId]?.resultB       ?? null,
     status:        fs[m.matchId]?.status        ?? m.status,
     penaltyWinner: fs[m.matchId]?.penaltyWinner ?? null,
+    htResult:      fs[m.matchId]?.htResult      ?? null,
   })).filter(m => m.status !== 'skipped');
   _matchesFetchedAt = Date.now();
 }
@@ -673,9 +674,20 @@ function renderMatchCard(m) {
       pts > 0 && !isExact ? `<span class="fm-pts winner">+${pts} pts ✓</span>` :
       pts === 0            ? `<span class="fm-pts wrong">0 pts</span>`           :
       !pred                ? `<span class="fm-pts none">No pick</span>`          : '';
+    // HT wildcard badge
+    let htBadge = '';
+    if (m.htWildcard && pred?.htPick) {
+      const htPts = pred.htPointsAwarded ?? null;
+      const htLabel = pred.htPick === 'teamA' ? `${getFlag(m.teamA, m.flagA)} ${m.teamA} HT`
+                    : pred.htPick === 'teamB' ? `${getFlag(m.teamB, m.flagB)} ${m.teamB} HT`
+                    : 'Draw HT';
+      if (htPts === 20)  htBadge = `<span class="fm-pts exact">+20 pts ⏱️</span>`;
+      else if (htPts === 0) htBadge = `<span class="fm-pts wrong">0 pts ⏱️</span>`;
+      else htBadge = `<span class="fm-pts none">⏱️ ${htLabel}</span>`;
+    }
     pickStrip = `<div class="fm-pick-strip">
       ${pred ? `<span class="fm-pick-label">Your pick</span><span class="fm-pick-score">${pred.predictedA}–${pred.predictedB}</span>` : '<span class="fm-pick-label text-muted">No pick made</span>'}
-      ${ptsBadge}
+      ${ptsBadge}${htBadge}
     </div>`;
   } else if (locked) {
     pickStrip = `<div class="fm-pick-strip locked">
@@ -786,6 +798,12 @@ async function openPredictView(matchId) {
   STATE._currentPenaltyPick = pred?.penaltyPick ?? null;
   updatePenaltyPicker();
 
+  // Init HT wildcard picker
+  document.getElementById('ht-btn-a').textContent = `${getFlag(m.teamA, m.flagA)} ${m.teamA}`;
+  document.getElementById('ht-btn-b').textContent = `${getFlag(m.teamB, m.flagB)} ${m.teamB}`;
+  STATE._currentHtPick = pred?.htPick ?? null;
+  updateHtPicker();
+
   showView('view-predict');
 }
 
@@ -820,6 +838,20 @@ function updatePenaltyPicker() {
   });
 }
 
+function updateHtPicker() {
+  const m = STATE.currentPredictMatch;
+  const picker = document.getElementById('ht-picker');
+  if (!picker || !m) return;
+  picker.style.display = m.htWildcard ? 'block' : 'none';
+  if (!m.htWildcard) return;
+  ['a', 'draw', 'b'].forEach(t => {
+    const btn = document.getElementById(`ht-btn-${t}`);
+    if (!btn) return;
+    const pick = t === 'a' ? 'teamA' : t === 'b' ? 'teamB' : 'draw';
+    btn.classList.toggle('pen-btn-active', STATE._currentHtPick === pick);
+  });
+}
+
 async function savePrediction() {
   const m = STATE.currentPredictMatch;
   if (!m || !STATE.session) return;
@@ -845,6 +877,7 @@ async function savePrediction() {
       userId: STATE.session.userId, matchId: m.matchId,
       predictedA: scoreA, predictedB: scoreB,
       penaltyPick: penPick,
+      htPick: m.htWildcard ? (STATE._currentHtPick ?? null) : null,
       updatedAt: serverTimestamp(), lastMinute: lastMin,
     };
     if (!existing) {
@@ -1027,6 +1060,30 @@ async function openCompareModal(userId, nickname) {
       return `<span class="compare-pen-pick ${correct ? 'pen-correct' : 'pen-wrong'}">🏆 ${pickName}</span>`;
     };
 
+    // HT wildcard row
+    const htResult = m.htResult ?? null;
+    const myHtPts  = mine?.htPointsAwarded   ?? null;
+    const thHtPts  = (m.htWildcard && htResult && theirs?.htPick != null)
+                       ? (theirs.htPick === htResult ? 20 : 0) : null;
+    const htPickLabel = pick => {
+      if (!pick) return '–';
+      if (pick === 'teamA') return `${getFlag(m.teamA, m.flagA)} ${m.teamA}`;
+      if (pick === 'teamB') return `${getFlag(m.teamB, m.flagB)} ${m.teamB}`;
+      return 'Draw';
+    };
+    const htRow = m.htWildcard ? `
+      <div class="compare-ht-row">
+        <span class="compare-ht-label">⏱️ HT pick${htResult ? ` (${htPickLabel(htResult)})` : ''}</span>
+        <div class="compare-ht-picks">
+          <span class="compare-ht-pick ${myHtPts === 20 ? 'pen-correct' : myHtPts === 0 ? 'pen-wrong' : ''}">
+            ${htPickLabel(mine?.htPick ?? null)}${myHtPts === 20 ? ' +20' : myHtPts === 0 ? ' ✗' : ''}
+          </span>
+          <span class="compare-ht-pick ${thHtPts === 20 ? 'pen-correct' : thHtPts === 0 ? 'pen-wrong' : ''}">
+            ${htPickLabel(theirs?.htPick ?? null)}${thHtPts === 20 ? ' +20' : thHtPts === 0 ? ' ✗' : ''}
+          </span>
+        </div>
+      </div>` : '';
+
     return `<div class="compare-row">
       <div class="compare-match-label">${getFlag(m.teamA, m.flagA)} ${m.teamA} <strong>${m.resultA}–${m.resultB}</strong> ${m.teamB} ${getFlag(m.teamB, m.flagB)}</div>
       <div class="compare-picks">
@@ -1043,6 +1100,7 @@ async function openCompareModal(userId, nickname) {
           <span class="compare-pts">${ptsLabel(thPts)}</span>
         </div>
       </div>
+      ${htRow}
     </div>`;
   }).join('');
 }
@@ -1286,6 +1344,7 @@ function renderMyPredictions() {
       if (p.predictedA === m.resultA && p.predictedB === m.resultB) exact++;
       else winner++;
     }
+    if ((p.htPointsAwarded ?? 0) > 0) totalPts += p.htPointsAwarded;
   });
 
   const scored = Object.values(STATE.predictions).filter(p => p.pointsAwarded != null);
@@ -1312,8 +1371,9 @@ function renderMyPredictions() {
 
   function renderPredCard({ m, p }) {
     const pts = p.pointsAwarded;
-    const ptsCls = pts === 18 || pts === 13 ? 'exact' : pts === 15 || pts === 10 ? 'winner' : pts === 0 ? 'wrong' : 'none';
-    const ptsLabel = pts === 18 ? '+18' : pts === 15 ? '+15' : pts === 13 ? '+13' : pts === 10 ? '+10' : pts === 0 ? '0' : '–';
+    const isExactScore = pts != null && m.resultA != null && p.predictedA === m.resultA && p.predictedB === m.resultB;
+    const ptsCls   = pts == null ? 'none' : pts === 0 ? 'wrong' : isExactScore ? 'exact' : 'winner';
+    const ptsLabel = pts == null ? '–' : pts === 0 ? '0' : `+${pts}`;
     const result = m.resultA != null ? `${m.resultA} – ${m.resultB}` : null;
     // Penalty pick line — show when user picked a penalty winner
     const penPick = p.penaltyPick;
@@ -1327,6 +1387,17 @@ function renderMyPredictions() {
            🏆 Pens: ${penFlag} ${penTeam}${penCorrect ? ' ✓' : penWrong ? ' ✗' : ''}
          </div>`
       : '';
+    // HT wildcard line
+    const htLine = (() => {
+      if (!m.htWildcard || !p.htPick) return '';
+      const htPickName = p.htPick === 'teamA' ? `${getFlag(m.teamA, m.flagA)} ${m.teamA}`
+                       : p.htPick === 'teamB' ? `${getFlag(m.teamB, m.flagB)} ${m.teamB}` : 'Draw';
+      const htPts = p.htPointsAwarded ?? null;
+      const htCls = htPts === 20 ? ' pen-correct' : htPts === 0 ? ' pen-wrong' : '';
+      return `<div class="pred-pen-pick${htCls}">
+           ⏱️ HT: ${htPickName}${htPts === 20 ? ' +20 ✓' : htPts === 0 ? ' ✗' : ''}
+         </div>`;
+    })();
     return `<div class="pred-fm-card">
       <div class="pred-fm-row">
         <div class="pred-fm-team">
@@ -1345,7 +1416,7 @@ function renderMyPredictions() {
           <span class="pred-fm-name">${m.teamB}</span>
         </div>
       </div>
-      ${penLine}
+      ${penLine}${htLine}
       <div class="pred-fm-pts ${ptsCls}">${ptsLabel} pts</div>
     </div>`;
   }
@@ -1617,6 +1688,15 @@ function renderAdminMatches() {
                 <option value="teamB" ${m.penaltyWinner === 'teamB' ? 'selected' : ''}>${getFlag(m.teamB, m.flagB)} ${m.teamB}</option>
               </select>
             </div>` : ''}
+            ${m.htWildcard ? `<div class="pen-admin-row">
+              <span class="pen-admin-label">⏱️ HT result:</span>
+              <select class="pen-admin-select" id="ht-result-${m.matchId}">
+                <option value="">— Not set —</option>
+                <option value="teamA" ${m.htResult === 'teamA' ? 'selected' : ''}>${getFlag(m.teamA, m.flagA)} ${m.teamA}</option>
+                <option value="draw"  ${m.htResult === 'draw'  ? 'selected' : ''}>Draw</option>
+                <option value="teamB" ${m.htResult === 'teamB' ? 'selected' : ''}>${getFlag(m.teamB, m.flagB)} ${m.teamB}</option>
+              </select>
+            </div>` : ''}
           </div>`;
         }).join('')}
       </div>
@@ -1641,9 +1721,16 @@ async function saveMatchResult(matchId, autoRA, autoRB, autoPenaltyWinner) {
     const penSel = document.getElementById(`pen-winner-${matchId}`);
     penaltyWinner = penSel?.value || null;
   }
+  // Read HT result for htWildcard matches
+  let htResult = null;
+  if (m?.htWildcard) {
+    const htSel = document.getElementById(`ht-result-${matchId}`);
+    htResult = htSel?.value || null;
+  }
   try {
     const matchUpdate = { resultA: rA, resultB: rB, status: 'completed' };
     if (penaltyWinner) matchUpdate.penaltyWinner = penaltyWinner;
+    if (htResult)      matchUpdate.htResult      = htResult;
     await setDoc(doc(STATE.db, 'matches', matchId), matchUpdate, { merge: true });
     const pSnap = await getDocs(query(collection(STATE.db, 'predictions'), where('matchId', '==', matchId)));
     const batch = writeBatch(STATE.db);
@@ -1651,10 +1738,16 @@ async function saveMatchResult(matchId, autoRA, autoRB, autoPenaltyWinner) {
     const deltas = {};
     pSnap.forEach(d => {
       const p = d.data();
-      const pts = calculatePoints(p.predictedA, p.predictedB, rA, rB, p.penaltyPick ?? null, penaltyWinner, m?.stage);
-      batch.update(d.ref, { pointsAwarded: pts });
+      const pts    = calculatePoints(p.predictedA, p.predictedB, rA, rB, p.penaltyPick ?? null, penaltyWinner, m?.stage);
+      const htPts  = (htResult && p.htPick) ? (p.htPick === htResult ? 20 : 0) : null;
+      const update = { pointsAwarded: pts };
+      if (htPts !== null) update.htPointsAwarded = htPts;
+      batch.update(d.ref, update);
       total++; if (p.predictedA === rA && p.predictedB === rB) exact++; else if (pts > 0) correct++;
-      deltas[p.userId] = (deltas[p.userId] || 0) + (pts - (p.pointsAwarded ?? 0));
+      const prevPts   = p.pointsAwarded   ?? 0;
+      const prevHtPts = p.htPointsAwarded ?? 0;
+      const newHtPts  = htPts ?? prevHtPts;
+      deltas[p.userId] = (deltas[p.userId] || 0) + (pts - prevPts) + (newHtPts - prevHtPts);
     });
     await batch.commit();
     const uBatch = writeBatch(STATE.db);
@@ -1664,9 +1757,10 @@ async function saveMatchResult(matchId, autoRA, autoRB, autoPenaltyWinner) {
       if (s.exists()) uBatch.update(doc(STATE.db, 'users', uid), { totalPoints: (s.data().totalPoints || 0) + delta });
     }
     await uBatch.commit();
+    const htNote = htResult ? ` · HT: ${htResult === 'teamA' ? (m?.teamA || 'A') : htResult === 'teamB' ? (m?.teamB || 'B') : 'Draw'}` : '';
     // Only show toast for manual saves (auto-fetch batches its own toast)
-    if (autoRA === undefined) showToast(`✅ ${total} predictions scored: ${exact} exact, ${correct} correct${penaltyWinner ? ` · penalties: ${penaltyWinner === 'teamA' ? (m?.teamA || 'Team A') : (m?.teamB || 'Team B')}` : ''}`, 'success');
-    if (m) { m.resultA = rA; m.resultB = rB; m.status = 'completed'; }
+    if (autoRA === undefined) showToast(`✅ ${total} predictions scored: ${exact} exact, ${correct} correct${penaltyWinner ? ` · penalties: ${penaltyWinner === 'teamA' ? (m?.teamA || 'Team A') : (m?.teamB || 'Team B')}` : ''}${htNote}`, 'success');
+    if (m) { m.resultA = rA; m.resultB = rB; m.status = 'completed'; if (htResult) m.htResult = htResult; }
     // Bust caches so next view load picks up fresh data
     _matchesFetchedAt = 0; _usersFetchedAt = 0; _predsFetchedAt = 0;
   } catch (e) {
@@ -2417,6 +2511,20 @@ function wireEvents() {
   document.getElementById('pen-btn-b').addEventListener('click', () => {
     STATE._currentPenaltyPick = STATE._currentPenaltyPick === 'teamB' ? null : 'teamB';
     updatePenaltyPicker();
+  });
+
+  // HT wildcard picker buttons (toggle off if same picked again)
+  document.getElementById('ht-btn-a').addEventListener('click', () => {
+    STATE._currentHtPick = STATE._currentHtPick === 'teamA' ? null : 'teamA';
+    updateHtPicker();
+  });
+  document.getElementById('ht-btn-draw').addEventListener('click', () => {
+    STATE._currentHtPick = STATE._currentHtPick === 'draw' ? null : 'draw';
+    updateHtPicker();
+  });
+  document.getElementById('ht-btn-b').addEventListener('click', () => {
+    STATE._currentHtPick = STATE._currentHtPick === 'teamB' ? null : 'teamB';
+    updateHtPicker();
   });
 
   // Stepper buttons
