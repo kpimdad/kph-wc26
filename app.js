@@ -1636,7 +1636,6 @@ async function saveMatchResult(matchId, autoRA, autoRB, autoPenaltyWinner) {
     await uBatch.commit();
     // Only show toast for manual saves (auto-fetch batches its own toast)
     if (autoRA === undefined) showToast(`✅ ${total} predictions scored: ${exact} exact, ${correct} correct${penaltyWinner ? ` · penalties: ${penaltyWinner === 'teamA' ? (m?.teamA || 'Team A') : (m?.teamB || 'Team B')}` : ''}`, 'success');
-    const m = STATE.matches.find(x => x.matchId === matchId);
     if (m) { m.resultA = rA; m.resultB = rB; m.status = 'completed'; }
     // Bust caches so next view load picks up fresh data
     _matchesFetchedAt = 0; _usersFetchedAt = 0; _predsFetchedAt = 0;
