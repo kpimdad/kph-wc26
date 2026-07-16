@@ -1,4 +1,4 @@
-const CACHE = 'kph-wc26-v50';
+const CACHE = 'kph-wc26-v51';
 const SHELL = [
   '/kph-wc26/',
   '/kph-wc26/index.html',
