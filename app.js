@@ -1639,7 +1639,11 @@ async function saveMatchResult(matchId, autoRA, autoRB, autoPenaltyWinner) {
     if (m) { m.resultA = rA; m.resultB = rB; m.status = 'completed'; }
     // Bust caches so next view load picks up fresh data
     _matchesFetchedAt = 0; _usersFetchedAt = 0; _predsFetchedAt = 0;
-  } catch (e) { showToast('Error saving result', 'error'); console.error(e); }
+  } catch (e) {
+    const msg = e?.code || e?.message || String(e);
+    showToast(`Save failed: ${msg}`, 'error');
+    console.error('saveMatchResult error:', e);
+  }
 }
 
 function renderRecalcSection() {
