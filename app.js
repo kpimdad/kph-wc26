@@ -916,18 +916,28 @@ function renderDeadlineBanner() {
 async function computeUserAccuracy() {
   const snap = await getDocs(collection(STATE.db, 'predictions'));
   const allPreds = {}, finished = {}, scored = {}, exactMap = {}, winnerMap = {}, ptsMap = {}, penMap = {};
+  // Build match result map for exact-score detection
+  const mResultMap = {};
+  STATE.matches.forEach(m => { if (m.resultA != null) mResultMap[m.matchId] = m; });
   snap.forEach(d => {
     const p = d.data();
     allPreds[p.userId] = (allPreds[p.userId] || 0) + 1;
     if (p.pointsAwarded != null) {
       finished[p.userId] = (finished[p.userId] || 0) + 1;
-      ptsMap[p.userId] = (ptsMap[p.userId] || 0) + (p.pointsAwarded || 0);
-      // 13 or 18 = exact score (with or without penalty bonus)
-      if (p.pointsAwarded === 13 || p.pointsAwarded === 18) { exactMap[p.userId]  = (exactMap[p.userId]  || 0) + 1; scored[p.userId] = (scored[p.userId] || 0) + 1; }
-      // 10 or 15 = correct result only (with or without penalty bonus)
-      if (p.pointsAwarded === 10 || p.pointsAwarded === 15) { winnerMap[p.userId] = (winnerMap[p.userId] || 0) + 1; scored[p.userId] = (scored[p.userId] || 0) + 1; }
-      // 18 or 15 = penalty bonus earned
-      if (p.pointsAwarded === 18 || p.pointsAwarded === 15) { penMap[p.userId] = (penMap[p.userId] || 0) + 1; }
+      ptsMap[p.userId]   = (ptsMap[p.userId]   || 0) + (p.pointsAwarded || 0);
+      if (p.pointsAwarded > 0) {
+        scored[p.userId] = (scored[p.userId] || 0) + 1;
+        const mr = mResultMap[p.matchId];
+        if (mr && p.predictedA === mr.resultA && p.predictedB === mr.resultB) {
+          exactMap[p.userId]  = (exactMap[p.userId]  || 0) + 1;
+        } else {
+          winnerMap[p.userId] = (winnerMap[p.userId] || 0) + 1;
+        }
+        // Penalty bonus: match went to penalties + user predicted draw + picked right team
+        if (mr?.penaltyWinner && mr.resultA === mr.resultB && p.predictedA === p.predictedB && p.penaltyPick === mr.penaltyWinner) {
+          penMap[p.userId] = (penMap[p.userId] || 0) + 1;
+        }
+      }
     }
   });
   STATE.users.forEach(u => {
@@ -986,8 +996,22 @@ async function openCompareModal(userId, nickname) {
     return;
   }
 
-  const ptsCls   = p => p === 18 || p === 13 ? 'exact' : p === 15 || p === 10 ? 'winner' : p === 0 ? 'wrong' : 'none';
-  const ptsLabel = p => p === 18 ? '+18 ⚽🏆' : p === 15 ? '+15 ✓🏆' : p === 13 ? '+13 ⚽' : p === 10 ? '+10 ✓' : p === 0 ? '0 pts' : '–';
+  const matchResultMap = {};
+  STATE.matches.forEach(m => { if (m.resultA != null) matchResultMap[m.matchId] = m; });
+  const isExactPred = (pred, matchId) => {
+    const mr = matchResultMap[matchId];
+    return mr && pred && pred.predictedA === mr.resultA && pred.predictedB === mr.resultB;
+  };
+  const ptsCls = (p, pred, matchId) => {
+    if (p == null) return 'none';
+    if (p === 0) return 'wrong';
+    return isExactPred(pred, matchId) ? 'exact' : 'winner';
+  };
+  const ptsLabel = p => {
+    if (p == null) return '–';
+    if (p === 0) return '0 pts';
+    return `+${p} pts`;
+  };
 
   body.innerHTML = completed.map(m => {
     const mine   = STATE.predictions[m.matchId];
@@ -1006,13 +1030,13 @@ async function openCompareModal(userId, nickname) {
     return `<div class="compare-row">
       <div class="compare-match-label">${getFlag(m.teamA, m.flagA)} ${m.teamA} <strong>${m.resultA}–${m.resultB}</strong> ${m.teamB} ${getFlag(m.teamB, m.flagB)}</div>
       <div class="compare-picks">
-        <div class="compare-pick ${ptsCls(myPts)}">
+        <div class="compare-pick ${ptsCls(myPts, mine, m.matchId)}">
           <span class="compare-who">You</span>
           <span class="compare-score">${mine ? `${mine.predictedA}–${mine.predictedB}` : '–'}</span>
           ${penPickLine(mine, m.teamA, m.teamB)}
           <span class="compare-pts">${ptsLabel(myPts)}</span>
         </div>
-        <div class="compare-pick ${ptsCls(thPts)}">
+        <div class="compare-pick ${ptsCls(thPts, theirs, m.matchId)}">
           <span class="compare-who">${nickname}</span>
           <span class="compare-score">${theirs ? `${theirs.predictedA}–${theirs.predictedB}` : '–'}</span>
           ${penPickLine(theirs, m.teamA, m.teamB)}
@@ -1070,9 +1094,12 @@ async function buildFilteredLeaderboard(matchIds, filter) {
     const p = d.data();
     if (!matchIds.has(p.matchId)) return;
     predCount[p.userId] = (predCount[p.userId] || 0) + 1;
-    pts[p.userId]    = (pts[p.userId]    || 0) + (p.pointsAwarded || 0);
-    if (p.pointsAwarded === 13) exact[p.userId]  = (exact[p.userId]  || 0) + 1;
-    if (p.pointsAwarded === 10) winner[p.userId] = (winner[p.userId] || 0) + 1;
+    pts[p.userId] = (pts[p.userId] || 0) + (p.pointsAwarded || 0);
+    if (p.pointsAwarded > 0) {
+      const mr = STATE.matches.find(x => x.matchId === p.matchId);
+      if (mr && p.predictedA === mr.resultA && p.predictedB === mr.resultB) exact[p.userId]  = (exact[p.userId]  || 0) + 1;
+      else winner[p.userId] = (winner[p.userId] || 0) + 1;
+    }
   });
   const totalCompleted = [...matchIds].filter(id => {
     const m = STATE.matches.find(x => x.matchId === id);
@@ -1254,8 +1281,11 @@ function renderMyPredictions() {
     if (!p) return;
     if (!groups[m.matchDay]) groups[m.matchDay] = [];
     groups[m.matchDay].push({ m, p });
-    if (p.pointsAwarded === 13) { totalPts += 13; exact++; }
-    else if (p.pointsAwarded === 10) { totalPts += 10; winner++; }
+    if (p.pointsAwarded > 0) {
+      totalPts += p.pointsAwarded;
+      if (p.predictedA === m.resultA && p.predictedB === m.resultB) exact++;
+      else winner++;
+    }
   });
 
   const scored = Object.values(STATE.predictions).filter(p => p.pointsAwarded != null);
