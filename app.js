@@ -1224,8 +1224,11 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
       <td class="lb-td-num lb-td-played">${played}</td>
       <td class="lb-td-num lb-td-exact">${exact}</td>
       <td class="lb-td-num lb-td-result">${winner}</td>
-      <td class="lb-td-num lb-td-pen">${u.penHits > 0 ? `<span class="lb-pen-hit">🥅 ${u.penHits}</span>` : ''}</td>
-      <td class="lb-td-pts"><span class="lb-pts">${pts}</span></td>
+      <td class="lb-td-num lb-td-bonus">${(u.semifinalistPickPts || 0) > 0 ? `<span class="lb-bonus-pts">+${u.semifinalistPickPts}</span>` : '–'}</td>
+      <td class="lb-td-pts">
+        <span class="lb-pts">${pts}</span>
+        ${u.penHits > 0 ? `<span class="lb-pen-sub">⚽ ×${u.penHits}</span>` : ''}
+      </td>
     </tr>`;
 
     // Expandable drawer — shows champion/golden boot picks
@@ -1257,7 +1260,7 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
           <th class="lb-th-num">MP</th>
           <th class="lb-th-num">🎯</th>
           <th class="lb-th-num">✅</th>
-          <th class="lb-th-num" title="Penalty bonus picks">🥅</th>
+          <th class="lb-th-num" title="Bonus points (semi-finalist picks, HT wildcard, brackets)">Bonus</th>
           <th class="lb-th-pts">Points</th>
         </tr>
       </thead>
@@ -1273,8 +1276,9 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
     <div class="lb-legend">
       <span>MF</span> Matches Finished &nbsp;·&nbsp;
       <span>MP</span> Matches Played &nbsp;·&nbsp;
-      🎯 Exact Score (13pts) &nbsp;·&nbsp;
-      ✅ Correct Result (10pts)
+      🎯 Exact Score &nbsp;·&nbsp;
+      ✅ Correct Result &nbsp;·&nbsp;
+      Bonus = Semi-finalist picks · HT wildcard · Brackets
     </div>`);
 
   // Save rank snapshot for next visit (overall only)

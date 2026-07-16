@@ -1046,6 +1046,26 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
   font-weight: 700;
   color: var(--gold);
 }
+/* penalty sub-label under pts */
+.lb-pen-sub {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1;
+  margin-top: 0.15rem;
+}
+/* bonus column */
+.lb-td-bonus {
+  text-align: center;
+  padding: 0.5rem 0.3rem;
+  vertical-align: middle;
+}
+.lb-bonus-pts {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+}
 
 /* ── Rank movement badges ────────────────────── */
 .lb-rank-move {
