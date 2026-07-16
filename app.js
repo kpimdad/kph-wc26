@@ -2210,16 +2210,20 @@ async function shareStandings() {
     const DPR    = 3;
     const W      = 1080;
     const PAD    = 48;
-    const ROW_H  = 68;
-    const HDR_H  = 250;
+    const ROW_H  = 72;
+    const HDR_H  = 262;
     const FOOT_H = 62;
     const H      = HDR_H + rankedUsers.length * ROW_H + FOOT_H;
 
-    const xRank  = PAD + 24;
-    const xName  = PAD + 70;
-    const xExact = W - 340;
-    const xRes   = W - 200;
-    const xPts   = W - PAD;
+    const xRank  = PAD + 20;
+    const xName  = PAD + 64;
+    const xMP    = W - 490;   // Matches Played (per user)
+    const xExact = W - 400;   // 🎯 exact
+    const xRes   = W - 312;   // ✅ correct
+    const xBonus = W - 208;   // Bonus pts
+    const xPts   = W - PAD;   // Total points
+
+    const totalFinished = STATE.matches.filter(m => m.status === 'completed').length;
 
     const canvas  = document.createElement('canvas');
     canvas.width  = W * DPR;
@@ -2279,7 +2283,11 @@ async function shareStandings() {
 
     ctx.font      = '28px sans-serif';
     ctx.fillStyle = '#7a8fa8';
-    ctx.fillText(new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), W / 2, 194);
+    ctx.fillText(new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), W / 2, 190);
+
+    ctx.font      = '24px sans-serif';
+    ctx.fillStyle = '#4a6070';
+    ctx.fillText(`After ${totalFinished} matches`, W / 2, 224);
 
     // Divider
     const divGrad = ctx.createLinearGradient(0, 0, W, 0);
@@ -2290,19 +2298,24 @@ async function shareStandings() {
     ctx.strokeStyle = divGrad;
     ctx.lineWidth   = 1;
     ctx.beginPath();
-    ctx.moveTo(PAD, 220); ctx.lineTo(W - PAD, 220);
+    ctx.moveTo(PAD, 236); ctx.lineTo(W - PAD, 236);
     ctx.stroke();
 
     // Column headers
-    const colHdrY = 238;
+    const colHdrY = 252;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font         = '26px sans-serif';
+    ctx.font         = 'bold 19px sans-serif';
     ctx.fillStyle    = '#5a7080';
-    ctx.fillText('🎯', xExact, colHdrY);
-    ctx.fillText('✅', xRes,   colHdrY);
-    ctx.textAlign = 'right';
-    ctx.font      = 'bold 22px sans-serif';
+    ctx.fillText('MP', xMP,    colHdrY);
+    ctx.font         = '24px sans-serif';
+    ctx.fillText('🎯',  xExact, colHdrY);
+    ctx.fillText('✅',  xRes,   colHdrY);
+    ctx.font         = 'bold 19px sans-serif';
+    ctx.fillStyle    = '#4a90b8';
+    ctx.fillText('BONUS', xBonus, colHdrY);
+    ctx.textAlign    = 'right';
+    ctx.fillStyle    = '#5a7080';
     ctx.fillText('POINTS', xPts, colHdrY);
 
     // Rank arrows from localStorage snapshot
@@ -2357,28 +2370,44 @@ async function shareStandings() {
       // Name
       ctx.textAlign    = 'left';
       ctx.textBaseline = 'middle';
-      ctx.font         = 'bold 42px "Bebas Neue", Arial Narrow, sans-serif';
+      ctx.font         = 'bold 40px "Bebas Neue", Arial Narrow, sans-serif';
       ctx.fillStyle    = '#d8e8f5';
-      const maxLen     = 16;
+      const maxLen     = 14;
       const name       = u.nickname.length > maxLen ? u.nickname.slice(0, maxLen) + '\u2026' : u.nickname;
       ctx.fillText(name, xName, midY);
 
-      // Exact
+      // Matches Played
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font         = 'bold 40px "Bebas Neue", sans-serif';
-      ctx.fillStyle    = '#E8B800';
+      ctx.font         = 'bold 34px "Bebas Neue", sans-serif';
+      ctx.fillStyle    = '#5a7080';
+      ctx.fillText(u.finishedPreds || 0, xMP, midY);
+
+      // Exact
+      ctx.font      = 'bold 40px "Bebas Neue", sans-serif';
+      ctx.fillStyle = '#E8B800';
       ctx.fillText(u.computedExact  || 0, xExact, midY);
 
       // Result
       ctx.fillStyle = '#27ae60';
       ctx.fillText(u.computedWinner || 0, xRes, midY);
 
-      // Points
+      // Bonus
+      const bonusPts = u.semifinalistPickPts || 0;
+      ctx.fillStyle  = bonusPts > 0 ? '#4a90d9' : '#2a3a4a';
+      ctx.fillText(bonusPts > 0 ? `+${bonusPts}` : '\u2013', xBonus, midY);
+
+      // Points + penalty sub-text
       ctx.textAlign = 'right';
       ctx.fillStyle = '#f0f4f8';
       ctx.font      = 'bold 46px "Bebas Neue", sans-serif';
-      ctx.fillText(u.computedPoints != null ? u.computedPoints : (u.totalPoints || 0), xPts, midY);
+      const displayPts = u.computedPoints != null ? u.computedPoints : (u.totalPoints || 0);
+      ctx.fillText(displayPts, xPts, u.penHits > 0 ? midY - 8 : midY);
+      if (u.penHits > 0) {
+        ctx.font      = 'bold 18px sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillText(`\u26bd \u00d7${u.penHits}`, xPts, midY + 18);
+      }
     });
 
     // Footer
