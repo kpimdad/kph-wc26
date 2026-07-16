@@ -979,8 +979,8 @@ async function computeUserAccuracy() {
     u.finishedPreds    = total;
     u.computedExact    = exactMap[u.id]  || 0;
     u.computedWinner   = winnerMap[u.id] || 0;
-    // Sum actual pointsAwarded — correctly handles penalty bonus (13→18, 10→15)
-    u.computedPoints   = ptsMap[u.id] || 0;
+    // Sum actual pointsAwarded + bonus points from user doc (semi-finalist picks, HT wildcard, etc.)
+    u.computedPoints   = (ptsMap[u.id] || 0) + (u.semifinalistPickPts || 0);
     u.penHits          = penMap[u.id]  || 0;
     u.exactAccuracy    = total >= 1 ? Math.round(((exactMap[u.id]  || 0) / total) * 100) : null;
     u.resultAccuracy   = total >= 1 ? Math.round(((winnerMap[u.id] || 0) / total) * 100) : null;
