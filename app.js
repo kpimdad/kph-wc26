@@ -948,7 +948,7 @@ function renderDeadlineBanner() {
 
 async function computeUserAccuracy() {
   const snap = await getDocs(collection(STATE.db, 'predictions'));
-  const allPreds = {}, finished = {}, scored = {}, exactMap = {}, winnerMap = {}, ptsMap = {}, penMap = {};
+  const allPreds = {}, finished = {}, scored = {}, exactMap = {}, winnerMap = {}, ptsMap = {}, penMap = {}, htPtsMap = {};
   // Build match result map for exact-score detection
   const mResultMap = {};
   STATE.matches.forEach(m => { if (m.resultA != null) mResultMap[m.matchId] = m; });
@@ -957,7 +957,8 @@ async function computeUserAccuracy() {
     allPreds[p.userId] = (allPreds[p.userId] || 0) + 1;
     if (p.pointsAwarded != null) {
       finished[p.userId] = (finished[p.userId] || 0) + 1;
-      ptsMap[p.userId]   = (ptsMap[p.userId]   || 0) + (p.pointsAwarded || 0);
+      ptsMap[p.userId]   = (ptsMap[p.userId]   || 0) + (p.pointsAwarded   || 0);
+      htPtsMap[p.userId] = (htPtsMap[p.userId] || 0) + (p.htPointsAwarded || 0);
       if (p.pointsAwarded > 0) {
         scored[p.userId] = (scored[p.userId] || 0) + 1;
         const mr = mResultMap[p.matchId];
@@ -979,8 +980,9 @@ async function computeUserAccuracy() {
     u.finishedPreds    = total;
     u.computedExact    = exactMap[u.id]  || 0;
     u.computedWinner   = winnerMap[u.id] || 0;
-    // Sum actual pointsAwarded + bonus points from user doc (semi-finalist picks, HT wildcard, etc.)
-    u.computedPoints   = (ptsMap[u.id] || 0) + (u.semifinalistPickPts || 0);
+    // Sum actual pointsAwarded + bonus points from user doc (semi-finalist picks) + HT wildcard pts
+    u.htBonusPts     = htPtsMap[u.id] || 0;
+    u.computedPoints = (ptsMap[u.id] || 0) + (u.semifinalistPickPts || 0) + u.htBonusPts;
     u.penHits          = penMap[u.id]  || 0;
     u.exactAccuracy    = total >= 1 ? Math.round(((exactMap[u.id]  || 0) / total) * 100) : null;
     u.resultAccuracy   = total >= 1 ? Math.round(((winnerMap[u.id] || 0) / total) * 100) : null;
@@ -1224,7 +1226,7 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
       <td class="lb-td-num lb-td-played">${played}</td>
       <td class="lb-td-num lb-td-exact">${exact}</td>
       <td class="lb-td-num lb-td-result">${winner}</td>
-      <td class="lb-td-num lb-td-bonus">${(u.semifinalistPickPts || 0) > 0 ? `<span class="lb-bonus-pts">+${u.semifinalistPickPts}</span>` : '–'}</td>
+      <td class="lb-td-num lb-td-bonus">${(() => { const b = (u.semifinalistPickPts || 0) + (u.htBonusPts || 0); return b > 0 ? `<span class="lb-bonus-pts">+${b}</span>` : '–'; })()}</td>
       <td class="lb-td-pts">
         <span class="lb-pts">${pts}</span>
         ${u.penHits > 0 ? `<span class="lb-pen-sub">⚽ ×${u.penHits}</span>` : ''}
@@ -1786,7 +1788,9 @@ async function recalcMatch() {
   if (!id) { showToast('Select a match first', 'error'); return; }
   const m = STATE.matches.find(x => x.matchId === id);
   if (!m || m.resultA == null) { showToast('No result for this match', 'error'); return; }
-  await saveMatchResult(id);
+  // Pass stored result directly so saveMatchResult doesn't try to read missing DOM inputs
+  await saveMatchResult(id, m.resultA, m.resultB, m.penaltyWinner ?? undefined);
+  showToast(`✅ Recalculated: ${m.teamA} ${m.resultA}–${m.resultB} ${m.teamB}`, 'success');
 }
 
 // ── Backdate: Player Prediction Sheet ──────────────────
@@ -2392,8 +2396,8 @@ async function shareStandings() {
       ctx.fillStyle = '#27ae60';
       ctx.fillText(u.computedWinner || 0, xRes, midY);
 
-      // Bonus
-      const bonusPts = u.semifinalistPickPts || 0;
+      // Bonus (semi-finalist pts + HT wildcard pts)
+      const bonusPts = (u.semifinalistPickPts || 0) + (u.htBonusPts || 0);
       ctx.fillStyle  = bonusPts > 0 ? '#4a90d9' : '#2a3a4a';
       ctx.fillText(bonusPts > 0 ? `+${bonusPts}` : '\u2013', xBonus, midY);
 
