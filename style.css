@@ -1066,6 +1066,41 @@ body { padding-bottom: calc(126px + env(safe-area-inset-bottom)); }
   font-weight: 700;
   color: var(--accent);
 }
+.lb-bonus-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+.lb-bonus-info {
+  font-size: 0.65rem;
+  color: var(--muted);
+  line-height: 1;
+}
+.lb-bonus-wrap::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  right: 0;
+  background: #1a2a3a;
+  color: #c8ddf0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+.lb-bonus-wrap:hover::after,
+.lb-bonus-wrap.tip-open::after {
+  opacity: 1;
+}
 
 /* ── Rank movement badges ────────────────────── */
 .lb-rank-move {

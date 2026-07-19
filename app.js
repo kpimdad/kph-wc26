@@ -1226,7 +1226,18 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
       <td class="lb-td-num lb-td-played">${played}</td>
       <td class="lb-td-num lb-td-exact">${exact}</td>
       <td class="lb-td-num lb-td-result">${winner}</td>
-      <td class="lb-td-num lb-td-bonus">${(() => { const b = (u.semifinalistPickPts || 0) + (u.htBonusPts || 0) + (u.bracketPickPts || 0); return b > 0 ? `<span class="lb-bonus-pts">+${b}</span>` : '–'; })()}</td>
+      <td class="lb-td-num lb-td-bonus">${(() => {
+        const semifPts   = u.semifinalistPickPts || 0;
+        const htPts2     = u.htBonusPts          || 0;
+        const bracketPts = u.bracketPickPts       || 0;
+        const b = semifPts + htPts2 + bracketPts;
+        if (!b) return '–';
+        const parts = [];
+        if (semifPts)   parts.push(`Semis: +${semifPts}`);
+        if (htPts2)     parts.push(`HT: +${htPts2}`);
+        if (bracketPts) parts.push(`Bracket: +${bracketPts}`);
+        return `<span class="lb-bonus-wrap" data-tip="${parts.join(' · ')}"><span class="lb-bonus-pts">+${b}</span><span class="lb-bonus-info">ⓘ</span></span>`;
+      })()}</td>
       <td class="lb-td-pts">
         <span class="lb-pts">${pts}</span>
         ${u.penHits > 0 ? `<span class="lb-pen-sub">⚽ ×${u.penHits}</span>` : ''}
@@ -1312,6 +1323,19 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
       openCompareModal(btn.dataset.uid, btn.dataset.nickname);
     });
   });
+
+  // Bonus breakdown tooltip — tap to toggle on mobile
+  document.querySelectorAll('.lb-bonus-wrap').forEach(wrap => {
+    wrap.addEventListener('click', e => {
+      e.stopPropagation();
+      const isOpen = wrap.classList.contains('tip-open');
+      document.querySelectorAll('.lb-bonus-wrap.tip-open').forEach(w => w.classList.remove('tip-open'));
+      if (!isOpen) wrap.classList.add('tip-open');
+    });
+  });
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.lb-bonus-wrap.tip-open').forEach(w => w.classList.remove('tip-open'));
+  }, { once: false, capture: false });
 }
 
 function populateLeaderboardFilter() {
