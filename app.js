@@ -982,7 +982,7 @@ async function computeUserAccuracy() {
     u.computedWinner   = winnerMap[u.id] || 0;
     // Sum actual pointsAwarded + bonus points from user doc (semi-finalist picks) + HT wildcard pts
     u.htBonusPts     = htPtsMap[u.id] || 0;
-    u.computedPoints = (ptsMap[u.id] || 0) + (u.semifinalistPickPts || 0) + u.htBonusPts;
+    u.computedPoints = (ptsMap[u.id] || 0) + (u.semifinalistPickPts || 0) + u.htBonusPts + (u.bracketPickPts || 0);
     u.penHits          = penMap[u.id]  || 0;
     u.exactAccuracy    = total >= 1 ? Math.round(((exactMap[u.id]  || 0) / total) * 100) : null;
     u.resultAccuracy   = total >= 1 ? Math.round(((winnerMap[u.id] || 0) / total) * 100) : null;
@@ -1226,7 +1226,7 @@ function renderLeaderboardTable(users, filter, totalCompleted = 0) {
       <td class="lb-td-num lb-td-played">${played}</td>
       <td class="lb-td-num lb-td-exact">${exact}</td>
       <td class="lb-td-num lb-td-result">${winner}</td>
-      <td class="lb-td-num lb-td-bonus">${(() => { const b = (u.semifinalistPickPts || 0) + (u.htBonusPts || 0); return b > 0 ? `<span class="lb-bonus-pts">+${b}</span>` : '–'; })()}</td>
+      <td class="lb-td-num lb-td-bonus">${(() => { const b = (u.semifinalistPickPts || 0) + (u.htBonusPts || 0) + (u.bracketPickPts || 0); return b > 0 ? `<span class="lb-bonus-pts">+${b}</span>` : '–'; })()}</td>
       <td class="lb-td-pts">
         <span class="lb-pts">${pts}</span>
         ${u.penHits > 0 ? `<span class="lb-pen-sub">⚽ ×${u.penHits}</span>` : ''}
@@ -2397,7 +2397,7 @@ async function shareStandings() {
       ctx.fillText(u.computedWinner || 0, xRes, midY);
 
       // Bonus (semi-finalist pts + HT wildcard pts)
-      const bonusPts = (u.semifinalistPickPts || 0) + (u.htBonusPts || 0);
+      const bonusPts = (u.semifinalistPickPts || 0) + (u.htBonusPts || 0) + (u.bracketPickPts || 0);
       ctx.fillStyle  = bonusPts > 0 ? '#4a90d9' : '#2a3a4a';
       ctx.fillText(bonusPts > 0 ? `+${bonusPts}` : '\u2013', xBonus, midY);
 
